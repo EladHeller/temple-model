@@ -35,6 +35,7 @@ jobs:
           set -euo pipefail
           mkdir -p _site/temple _site/tabernacle
           cp index.html _site/index.html
+          cp walk-tour.js _site/walk-tour.js
           cp temple/viewer.html _site/temple/
           cp temple/temple_middot.glb _site/temple/
           cp temple/temple_middot_interior.glb _site/temple/
@@ -46,6 +47,7 @@ jobs:
           cp tabernacle/tabernacle_preview.png _site/tabernacle/
           cp tabernacle/tabernacle_interior_preview.png _site/tabernacle/
           test -s _site/index.html
+          test -s _site/walk-tour.js
           test -s _site/temple/temple_middot.glb
           test -s _site/tabernacle/tabernacle.glb
 

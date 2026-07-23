@@ -42,6 +42,18 @@ SOURCE = {
     "incense_altar": (1.0, 1.0, 2.0),      # Exodus 30:2
 }
 
+# Dimensions supplied by a named traditional interpretation rather than by
+# the biblical construction text itself.
+INTERPRETED = {
+    # Malbim on Exodus 25:14: the poles made by Moses were ten cubits long,
+    # matching the depth of the Tabernacle's Holy of Holies.
+    "ark_pole_length": 10.0,
+    # Rashi on Exodus 25:20, following Sukkah 5b: ten handbreadths of clear
+    # space separated the spread wings from the upper face of the cover.
+    # This model uses the six-handbreadth cubit applied to the Ark there.
+    "cherub_wing_spread_height": 10.0 / 6.0,
+}
+
 # The text gives no dimensions for these items or construction details.
 ASSUMED = {
     "laver_size": 1.35,
@@ -183,6 +195,8 @@ def sphere(name: str, radius: float, location: tuple[float, float, float],
     obj.data.name = name
     obj.scale = scale
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
     obj.data.materials.append(MATERIALS[mat])
     return move_to(obj, group)
 
@@ -213,6 +227,28 @@ def rod(name: str, start: tuple[float, float, float],
     obj.rotation_mode = "QUATERNION"
     obj.rotation_quaternion = direction.to_track_quat("Z", "Y")
     return obj
+
+
+def ellipsoid_between(name: str, start: tuple[float, float, float],
+                      end: tuple[float, float, float], width: float,
+                      depth: float, mat: str, group: str) -> bpy.types.Object:
+    """Create a softly modelled limb or torso aligned between two points."""
+    a = Vector(tuple(m(v) for v in start))
+    b = Vector(tuple(m(v) for v in end))
+    direction = b - a
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=24, ring_count=12, radius=1, location=(a + b) / 2)
+    obj = bpy.context.object
+    obj.name = name
+    obj.data.name = name
+    obj.scale = (m(width), m(depth), direction.length / 2)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    obj.rotation_mode = "QUATERNION"
+    obj.rotation_quaternion = direction.to_track_quat("Z", "Y")
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    obj.data.materials.append(MATERIALS[mat])
+    return move_to(obj, group)
 
 
 def frustum(name: str, radius_bottom: float, radius_top: float, depth: float,
@@ -696,23 +732,96 @@ def add_interior_architecture() -> None:
 def add_ark() -> None:
     group = "04 כלי הקודש"
     x, y = 25, 0
-    box("ארון העדות", (2.5, 1.5, 1.5), (x, y, 0.75), "זהב", group, 0.05)
-    box("כפורת", (2.62, 1.62, 0.14), (x, y, 1.57), "זהב", group, 0.04)
-    for side in (-1, 1):
-        cx = x + side * 0.72
-        sphere("ראש כרוב – סכמטי", 0.19, (cx, 0, 2.15), "זהב", group)
-        cylinder("גוף כרוב – סכמטי", 0.16, 0.56, (cx, 0, 1.88), "זהב", group, 20)
-        wing_tip = x + side * 0.08
-        rod("כנף כרוב – סכמטי", (cx, -0.08, 2.02), (wing_tip, -0.28, 2.48),
-            0.10, "זהב", group)
-        rod("כנף כרוב – סכמטי", (cx, 0.08, 2.02), (wing_tip, 0.28, 2.48),
-            0.10, "זהב", group)
-    for ypole in (-0.95, 0.95):
-        rod("בד הארון", (x - 2.1, ypole, 0.72), (x + 2.1, ypole, 0.72),
-            0.085, "זהב", group)
-        for ring_x in (x - 1.15, x + 1.15):
-            torus("טבעת הארון", 0.15, 0.035, (ring_x, ypole, 0.72),
-                  "זהב", group, rotation=(math.pi / 2, 0, 0))
+    # Menachot 98b places the Ark's 2.5-cubit length north-south and the poles
+    # east-west.  With +X west and +Y south, the source dimensions are thus
+    # rotated relative to most of the other furnishings in this scene.
+    box("ארון העדות", (1.5, 2.5, 1.5), (x, y, 0.75), "זהב", group, 0.045)
+    # A restrained framed panel treatment follows the Temple Institute visual
+    # reference while keeping the sourced rectangular dimensions unchanged.
+    for panel_y in (-1.265, 1.265):
+        box("לוח דופן אורכי של הארון", (1.08, 0.045, 0.78),
+            (x, panel_y, 0.72), "זהב", group, 0.025)
+    for panel_x in (x - 0.765, x + 0.765):
+        box("לוח דופן רוחבי של הארון", (0.045, 1.82, 0.78),
+            (panel_x, y, 0.72), "זהב", group, 0.025)
+
+    cover_size = (1.62, 2.62, 1 / 6)
+    cover_center_z = 1.5 + cover_size[2] / 2
+    box("כפורת", cover_size, (x, y, cover_center_z), "זהב", group, 0.04)
+    crown_z = cover_center_z + cover_size[2] / 2 + 0.035
+    for crown_y in (-1.32, 1.32):
+        box("זר זהב לאורך הכפורת", (1.72, 0.055, 0.07),
+            (x, crown_y, crown_z), "זהב", group, 0.018)
+    for crown_x in (x - 0.84, x + 0.84):
+        box("זר זהב לרוחב הכפורת", (0.055, 2.64, 0.07),
+            (crown_x, y, crown_z), "זהב", group, 0.018)
+
+    cover_top = cover_center_z + cover_size[2] / 2
+    spread_wing_height = cover_top + INTERPRETED["cherub_wing_spread_height"]
+
+    # The anatomy follows the kneeling, youthful figures and high feather fans
+    # in the Temple Institute reconstruction.  Exact anatomy and wingspan are
+    # still interpretive; the sourced facing direction and high spread remain.
+    for north_south in (-1, 1):
+        cy = y + north_south * 0.84
+        inward = -north_south
+        pelvis = (x, cy, 1.80)
+        shoulders = (x, cy + inward * 0.30, 2.18)
+        ellipsoid_between("גוף כרוב כורע ופשוט", pelvis, shoulders,
+                          0.19, 0.15,
+                          "זהב", group)
+        # One low continuous kneeling base replaces the previous collection of
+        # separate hips, knees, feet, elbows and hands.
+        sphere("בסיס כרוב כורע", 0.23,
+               (x, cy - inward * 0.02, 1.72), "זהב", group,
+               scale=(0.72, 1.04, 0.30))
+
+        neck_base = (x, cy + inward * 0.31, 2.16)
+        head_center = (x, cy + inward * 0.47, 2.38)
+        ellipsoid_between("צוואר כרוב", neck_base, head_center,
+                          0.075, 0.070, "זהב", group)
+        sphere("ראש כרוב – פני תינוק סכמטיים", 0.16, head_center,
+               "זהב", group, scale=(0.88, 0.94, 1.04))
+
+        # A single shoulder blade overlaps the torso and every feather root,
+        # making both wings grow visibly from the body instead of floating.
+        wing_joint = (x, cy + inward * 0.22, 2.20)
+        sphere("חיבור כנפי הכרוב לגוף", 0.16, wing_joint, "זהב", group,
+               scale=(1.45, 0.62, 0.70))
+
+        for east_west in (-1, 1):
+            feather_specs = (
+                (0.58, 0.30, -0.28, 0.105),
+                (0.49, 0.44, -0.08, 0.115),
+                (0.36, 0.56, 0.00, 0.120),
+                (0.22, 0.62, -0.18, 0.110),
+            )
+            for feather_index, (dx, dy, dz, feather_width) in enumerate(
+                    feather_specs, 1):
+                fraction = (feather_index - 1) / (len(feather_specs) - 1)
+                feather_root = (
+                    x + east_west * (0.08 + 0.03 * fraction),
+                    cy + inward * (0.22 + 0.02 * fraction),
+                    2.20 + 0.07 * fraction,
+                )
+                feather_tip = (
+                    x + east_west * dx,
+                    cy + inward * dy,
+                    spread_wing_height + dz,
+                )
+                ellipsoid_between(f"נוצת כנף כרוב מעוגלת {feather_index}",
+                                  feather_root, feather_tip, feather_width,
+                                  0.050, "זהב", group)
+
+    pole_half = INTERPRETED["ark_pole_length"] / 2
+    pole_z = 0.56
+    for pole_y in (-1.38, 1.38):
+        rod("בד הארון – עשר אמות לפי המלבי״ם",
+            (x - pole_half, pole_y, pole_z),
+            (x + pole_half, pole_y, pole_z), 0.075, "זהב", group)
+        for ring_x in (x - 0.66, x + 0.66):
+            torus("טבעת הארון", 0.16, 0.038, (ring_x, pole_y, pole_z),
+                  "זהב", group, rotation=(0, math.pi / 2, 0))
 
 
 def add_incense_altar() -> None:

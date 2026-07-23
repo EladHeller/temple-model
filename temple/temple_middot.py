@@ -98,6 +98,12 @@ ASSUMED = {
     "azarah_gatehouse_depth": 8.0,
     "azarah_chamber_depth": 14.0,
     "azarah_chamber_height": 12.0,
+    # Middot gives the number and rise of the semicircular steps, but not
+    # their tread depth. One cubit keeps the fifteen-step ascent usable at
+    # human scale and gives it the prominence expected before Nicanor's Gate.
+    "women_step_tread": 1.0,
+    # Leave the western gallery open above and beside the full stair fan.
+    "womens_balcony_stair_clearance": 2.0,
     # The Rambam placement summarized in Hebrew Wikipedia puts the chamber at
     # the Azarah's north-east corner. Yoma 25a gives the boundary relationship
     # and two doors, but no source supplies plan dimensions.
@@ -339,11 +345,12 @@ def add_materials() -> None:
     material("Terracotta", (0.48, 0.16, 0.065, 1.0), roughness=0.86)
     material("Olive oil", (0.52, 0.40, 0.055, 1.0), roughness=0.22)
     material("Hair and soot", (0.035, 0.022, 0.014, 1.0), roughness=0.96)
-    # Three close warm-grey values keep the altar recognisably light while
-    # separating its foundation, body and upper ledges in flat web lighting.
-    material("Altar limestone", (0.78, 0.74, 0.66, 1.0), roughness=0.88)
-    material("Altar shadow stone", (0.66, 0.61, 0.52, 1.0), roughness=0.92)
-    material("Altar upper stone", (0.84, 0.80, 0.72, 1.0), roughness=0.86)
+    # Deliberately deeper warm limestone values keep the altar distinct from
+    # the pale court paving.  The wider value steps also preserve the profile
+    # of the foundation, body and upper ledges under flat web lighting.
+    material("Altar limestone", (0.26, 0.21, 0.15, 1.0), roughness=0.94)
+    material("Altar shadow stone", (0.12, 0.09, 0.06, 1.0), roughness=0.98)
+    material("Altar upper stone", (0.35, 0.29, 0.20, 1.0), roughness=0.92)
 
 
 def box(
@@ -515,6 +522,25 @@ def label(
     obj.data.extrude = m(0.03)
     obj.data.materials.append(MATERIALS["Text"])
     move_to_collection(obj, "00 Labels")
+    return obj
+
+
+def label_on_y_wall(
+    text: str,
+    x: float,
+    y: float,
+    z: float,
+    facing_plan_y: int,
+    size: float = 2.5,
+) -> bpy.types.Object:
+    """Place upright text on a Y-aligned wall, facing the requested plan side."""
+    obj = label(text, x, y, z, size)
+    facing_scene_y = -facing_plan_y if MIRROR_PLAN_Y else facing_plan_y
+    if facing_scene_y < 0:
+        obj.rotation_euler = (math.pi / 2, 0.0, 0.0)
+    else:
+        # Turning around local Y keeps the lettering upright when it faces +Y.
+        obj.rotation_euler = (-math.pi / 2, math.pi, 0.0)
     return obj
 
 
@@ -709,7 +735,17 @@ def add_womens_chamber_shell(
             (center_x + offset, center_y, base_z + 0.33),
             "Bronze", group, 0.02)
 
-    label(name, center_x, center_y, base_z + 0.38, 1.65)
+    # Put the chamber name on the north/south wall that faces the open court,
+    # rather than laying it across the chamber floor.
+    court_wall_side = -1 if center_y > COURT_CENTER_Y else 1
+    label_on_y_wall(
+        name,
+        center_x,
+        center_y + court_wall_side * (width / 2 + 0.04),
+        base_z + height * 0.55,
+        court_wall_side,
+        1.65,
+    )
 
 
 def add_amphora(
@@ -849,16 +885,31 @@ def add_wood_chamber_details(x: float, y: float, base_z: float) -> None:
 def add_lepers_chamber_details(x: float, y: float, base_z: float) -> None:
     group = "04 Women's Court Chambers"
     bath_x, bath_y = x - 5.0, y - 2.5
+    stair_center_x = bath_x + 3.0
+    stair_opening_width = 6.0
     # Raised cutaway edges keep the immersion pool visible above the existing
     # solid court platform; the historical pool would of course be excavated.
     for dx in (-6.5, 6.5):
         box("לשכת המצורעים – דופן המקווה", (0.8, 10.0, 3.0),
             (bath_x + dx, bath_y, base_z + 1.5),
             "Jerusalem limestone", group, 0.08)
-    for dy in (-5.0, 5.0):
-        box("לשכת המצורעים – דופן המקווה", (13.8, 0.8, 3.0),
-            (bath_x, bath_y + dy, base_z + 1.5),
+    # Split the southern wall around the stair, giving the raised cutaway pool
+    # a real walkable entrance instead of a solid wall across its top step.
+    wall_left = bath_x - 6.9
+    wall_right = bath_x + 6.9
+    opening_left = stair_center_x - stair_opening_width / 2
+    opening_right = stair_center_x + stair_opening_width / 2
+    for start_x, end_x in ((wall_left, opening_left),
+                           (opening_right, wall_right)):
+        if end_x <= start_x:
+            continue
+        box("לשכת המצורעים – דופן המקווה דרומית",
+            (end_x - start_x, 0.8, 3.0),
+            ((start_x + end_x) / 2, bath_y - 5.0, base_z + 1.5),
             "Jerusalem limestone", group, 0.08)
+    box("לשכת המצורעים – דופן המקווה צפונית", (13.8, 0.8, 3.0),
+        (bath_x, bath_y + 5.0, base_z + 1.5),
+        "Jerusalem limestone", group, 0.08)
     box("לשכת המצורעים – חלל המקווה", (12.0, 8.2, 0.35),
         (bath_x, bath_y, base_z + 0.36), "Dark opening", group, 0.03)
     box("לשכת המצורעים – מי המקווה", (11.7, 7.9, 0.16),
@@ -870,6 +921,15 @@ def add_lepers_chamber_details(x: float, y: float, base_z: float) -> None:
             (bath_x + 3.0 + step_index * 0.55,
              bath_y - 4.0 + step_index * 0.75,
              base_z + 2.65 - step_index * 0.38),
+            "Pale court stone", group, 0.04)
+    # Because the didactic pool is raised above the court platform, this short
+    # outer flight connects the chamber floor to the descending immersion steps.
+    for step_index in range(7):
+        step_height = (step_index + 1) * 0.4
+        box(f"לשכת המצורעים – מעלה חיצונית למקווה {step_index + 1}",
+            (5.4, 1.15, step_height),
+            (stair_center_x, bath_y - 11.0 + step_index,
+             base_z + step_height / 2),
             "Pale court stone", group, 0.04)
     beam_between("לשכת המצורעים – מאחז ירידה",
                  (bath_x + 5.5, bath_y - 4.0, base_z + 3.5),
@@ -1450,23 +1510,54 @@ def build_womens_court() -> None:
             (center_x,
              side_y + (1.8 if side == "דרום" else -1.8),
              balcony_z + 1.5), "Cedar", "04 Women's Court")
-    for side, side_x in (("מזרח", WOMEN_EAST_X + 4.0),
-                         ("מערב", AZARAH_EAST_X - 4.0)):
-        box(f"גזוזטרה בעזרת הנשים – {side}", (4, width - 8, 0.45),
-            (side_x, COURT_CENTER_Y, balcony_z), "Cedar", "04 Women's Court", 0.06)
-        box(f"מעקה הגזוזטרה – {side}", (0.25, width - 8, 3.0),
-            (side_x + (1.8 if side == "מזרח" else -1.8), COURT_CENTER_Y,
-             balcony_z + 1.5), "Cedar", "04 Women's Court")
+    # The eastern gallery is continuous. On the west, two shorter runs leave
+    # the stair and Nicanor axis open instead of forming a slab above them.
+    box("גזוזטרה בעזרת הנשים – מזרח", (4, width - 8, 0.45),
+        (WOMEN_EAST_X + 4.0, COURT_CENTER_Y, balcony_z),
+        "Cedar", "04 Women's Court", 0.06)
+    box("מעקה הגזוזטרה – מזרח", (0.25, width - 8, 3.0),
+        (WOMEN_EAST_X + 5.8, COURT_CENTER_Y, balcony_z + 1.5),
+        "Cedar", "04 Women's Court")
+
+    stair_radius = (
+        gate_w / 2
+        + SOURCE["women_steps"] * ASSUMED["women_step_tread"]
+    )
+    west_gallery_x = AZARAH_EAST_X - 4.0
+    stair_opening_half_width = (
+        stair_radius + ASSUMED["womens_balcony_stair_clearance"]
+    )
+    gallery_inner_half_length = width / 2 - 4.0
+    west_run_length = gallery_inner_half_length - stair_opening_half_width
+    for side, direction in (("דרום", -1), ("צפון", 1)):
+        run_center_y = COURT_CENTER_Y + direction * (
+            stair_opening_half_width + west_run_length / 2
+        )
+        box(f"גזוזטרה בעזרת הנשים – מערב {side}",
+            (4, west_run_length, 0.45),
+            (west_gallery_x, run_center_y, balcony_z),
+            "Cedar", "04 Women's Court", 0.06)
+        box(f"מעקה הגזוזטרה – מערב {side}",
+            (0.25, west_run_length, 3.0),
+            (west_gallery_x - 1.8, run_center_y, balcony_z + 1.5),
+            "Cedar", "04 Women's Court")
     for support_index, support_y in enumerate(frange(COURT_SOUTH_Y + 8,
                                                       COURT_NORTH_Y - 8, 16), 1):
-        for support_x in (WOMEN_EAST_X + 4.0, AZARAH_EAST_X - 4.0):
+        support_xs = [WOMEN_EAST_X + 4.0]
+        if abs(support_y - COURT_CENTER_Y) >= stair_opening_half_width:
+            support_xs.append(west_gallery_x)
+        for support_x in support_xs:
             cylinder(f"עמוד גזוזטרה {support_index}", 0.22, 15.0,
                      (support_x, support_y, level + 7.5),
                      "Cedar", "04 Women's Court", 16)
 
     # Fifteen curved steps: successive stacked half-discs make visible treads.
     for index in range(SOURCE["women_steps"]):
-        radius = (SOURCE["women_steps"] - index) * 0.5
+        radius = (
+            gate_w / 2
+            + (SOURCE["women_steps"] - index)
+            * ASSUMED["women_step_tread"]
+        )
         semi_disc(
             f"Curved step {index + 1:02d}", AZARAH_EAST_X,
             COURT_CENTER_Y, radius, level + index * 0.5, 0.5,
@@ -1615,10 +1706,10 @@ def build_azarah_gates_and_chambers() -> None:
               threshold + 2.72), "Bronze", "06 Azarah Gates", 32)
 
     # The gate's eastern threshold served as the standing place for several
-    # purification rites. A restrained stone strip identifies that zone
-    # without presenting an unsourced permanent installation as fact.
+    # purification rites. Keep the interpretive marker on the upper platform;
+    # placing it east of the threshold would leave it floating over the steps.
     box("מעמד הטהרה בפתח שער ניקנור", (4.0, 8.0, 0.22),
-        (AZARAH_EAST_X - 3.8, COURT_CENTER_Y, threshold + 0.12),
+        (AZARAH_EAST_X + 2.0, COURT_CENTER_Y, threshold + 0.12),
         "Assumed element", "06 Azarah Gates", 0.05)
 
     # The House of the Hearth was a large domed building with four inner
@@ -2369,14 +2460,14 @@ def setup_world_and_camera() -> None:
     fill.data.size = m(180)
     move_to_collection(fill, "11 Lighting and Camera")
 
-    # A soft local fill prevents the altar's east/south faces from collapsing
-    # into near-black while preserving the ledge shadows that reveal its form.
+    # A restrained local fill keeps the altar's east/south faces legible
+    # without washing out the ledge shadows that reveal its form.
     bpy.ops.object.light_add(type="AREA", location=scene_location((40, 36, 42)))
     altar_fill = bpy.context.object
     altar_fill.name = "תאורת מילוי רכה למזבח"
     altar_fill.data.name = altar_fill.name
-    altar_fill.data.energy = 520
-    altar_fill.data.color = (1.0, 0.88, 0.70)
+    altar_fill.data.energy = 100
+    altar_fill.data.color = (1.0, 0.92, 0.80)
     altar_fill.data.shape = "DISK"
     altar_fill.data.size = m(24)
     altar_target = Vector(scene_location((61, 71, 22)))

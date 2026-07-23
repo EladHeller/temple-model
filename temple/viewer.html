@@ -7,6 +7,9 @@
   <meta name="description" content="אפליקציה אינטראקטיבית לצפייה בבית המקדש לפי מסכת מידות">
   <title>בית המקדש לפי מסכת מידות</title>
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"}}
+  </script>
   <style>
     :root {
       color-scheme: dark;
@@ -304,6 +307,108 @@
       outline: 0;
     }
 
+    .walk-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      outline: 0;
+      touch-action: none;
+    }
+
+    .walk-canvas[hidden] { display: none; }
+    .stage.walk-active model-viewer { display: none; }
+    .stage.walk-active #toggle-spin { display: none; }
+
+    .walk-intro {
+      position: absolute;
+      z-index: 11;
+      inset: 50% auto auto 50%;
+      width: min(430px, calc(100% - 36px));
+      padding: 24px;
+      border: 1px solid rgba(238, 217, 176, .24);
+      border-radius: 18px;
+      color: var(--ink);
+      background: rgba(17, 15, 12, .94);
+      box-shadow: 0 22px 70px rgba(0, 0, 0, .5);
+      transform: translate(-50%, -50%);
+      text-align: center;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .walk-intro[hidden] { display: none; }
+    .walk-intro h3 { margin: 6px 0 9px; font: 500 26px/1.2 Georgia, serif; }
+    .walk-intro p { margin: 0; color: #c3bcaf; font-size: 13px; line-height: 1.7; }
+    .walk-intro-actions { display: flex; justify-content: center; gap: 8px; margin-top: 18px; }
+    .walk-start, .walk-close {
+      min-height: 42px;
+      padding: 0 18px;
+      border: 1px solid rgba(214, 175, 98, .34);
+      border-radius: 10px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, .04);
+      cursor: pointer;
+    }
+    .walk-start { border: 0; color: #1b150b; background: linear-gradient(135deg, var(--gold-light), var(--gold)); font-weight: 700; }
+    .walk-close:hover { color: var(--gold-light); background: rgba(214, 175, 98, .1); }
+
+    .walk-crosshair {
+      position: absolute;
+      z-index: 4;
+      top: 50%;
+      left: 50%;
+      width: 7px;
+      height: 7px;
+      display: none;
+      border: 1px solid rgba(255, 255, 255, .82);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .45);
+    }
+    .stage.walk-active .walk-crosshair { display: block; }
+
+    .walk-touch { display: none; }
+    .walk-joystick {
+      position: absolute;
+      right: 22px;
+      bottom: 82px;
+      width: 112px;
+      height: 112px;
+      border: 1px solid rgba(255, 255, 255, .25);
+      border-radius: 50%;
+      background: rgba(12, 14, 17, .34);
+      touch-action: none;
+      pointer-events: auto;
+    }
+    .walk-joystick::before, .walk-joystick::after { content: ""; position: absolute; inset: 50% 14px auto; height: 1px; background: rgba(255, 255, 255, .15); }
+    .walk-joystick::after { transform: rotate(90deg); }
+    .walk-joystick-knob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 46px;
+      height: 46px;
+      margin: -23px;
+      border: 1px solid rgba(241, 209, 143, .7);
+      border-radius: 50%;
+      background: rgba(214, 175, 98, .45);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .28);
+    }
+    .walk-look-hint {
+      position: absolute;
+      left: 20px;
+      bottom: 92px;
+      max-width: 130px;
+      color: rgba(255, 255, 255, .76);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: left;
+      text-shadow: 0 1px 4px #000;
+      pointer-events: none;
+    }
+
     .stage::after {
       content: "";
       position: absolute;
@@ -552,6 +657,12 @@
       .tool-dock { right: 12px; left: 12px; bottom: 10px; justify-content: center; }
       .tool-button { flex: 1; }
       .stage-top { inset: 12px 12px auto 12px; }
+      .walk-intro { padding: 20px; }
+    }
+
+    @media (pointer: coarse) {
+      .stage.walk-active .walk-touch { position: absolute; z-index: 8; inset: 0; display: block; pointer-events: none; }
+      .stage.walk-active .walk-crosshair { display: none; }
     }
 
     @media (max-width: 430px) {
@@ -587,7 +698,7 @@
       </div>
 
       <div class="header-actions">
-        <a class="icon-button" id="download-model" href="temple_middot.glb?v=12" download title="הורדת הדגם" aria-label="הורדת הדגם">
+        <a class="icon-button" id="download-model" href="temple_middot.glb?v=15" download title="הורדת הדגם" aria-label="הורדת הדגם">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M4 20h16"/></svg>
         </a>
         <button class="icon-button" id="fullscreen-header" type="button" title="מסך מלא" aria-label="מסך מלא">
@@ -615,8 +726,8 @@
       <main class="stage" id="stage">
         <model-viewer
           id="temple-viewer"
-          src="temple_middot.glb?v=12"
-          poster="temple_middot_preview.png?v=12"
+          src="temple_middot.glb?v=15"
+          poster="temple_middot_preview.png?v=15"
           alt="דגם תלת־ממדי של בית המקדש לפי מסכת מידות"
           camera-controls
           auto-rotate
@@ -638,6 +749,24 @@
           ar-modes="webxr scene-viewer quick-look">
         </model-viewer>
 
+        <canvas class="walk-canvas" id="walk-canvas" tabindex="0" hidden aria-label="סיור רגלי בגובה עיניים בדגם"></canvas>
+        <span class="walk-crosshair" aria-hidden="true"></span>
+
+        <section class="walk-intro" id="walk-intro" hidden aria-labelledby="walk-intro-title">
+          <div class="eyebrow">מצב סיור · גובה עיניים 1.60 מ׳</div>
+          <h3 id="walk-intro-title">נכנסים אל הדגם</h3>
+          <p>במחשב נעים קדימה ואחורה בחצים, ומסתובבים בחצים ימינה ושמאלה. אפשר לנוע גם עם WASD, להביט בעכבר ולרוץ עם Shift. בטלפון נעים בעזרת העיגול וגוררים את התצוגה כדי להביט סביב.</p>
+          <div class="walk-intro-actions">
+            <button class="walk-start" id="walk-start" type="button">התחלת הליכה</button>
+            <button class="walk-close" id="walk-close" type="button">רק להסתכל</button>
+          </div>
+        </section>
+
+        <div class="walk-touch" aria-hidden="true">
+          <div class="walk-joystick" id="walk-joystick"><span class="walk-joystick-knob" id="walk-joystick-knob"></span></div>
+          <div class="walk-look-hint">גררו בצד הזה כדי להביט סביב</div>
+        </div>
+
         <div class="stage-top" aria-live="polite">
           <div class="status-chip"><span class="status-dot" id="status-dot"></span><span id="status-text">טוען את הדגם…</span></div>
           <div class="scale-chip">קנה מידה: אמה = 0.5 מטר</div>
@@ -655,6 +784,9 @@
         </article>
 
         <div class="tool-dock" aria-label="כלי תצוגה">
+          <button class="tool-button" id="toggle-walk" type="button" aria-pressed="false" title="מעבר לסיור רגלי בגובה 1.60 מטר">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2"/><path d="m9.5 21 1-6-2-3 1.5-4h4l2 4 3 2M11 15l4 6M10 8 5 3"/></svg><span>סיור</span>
+          </button>
           <button class="tool-button" id="reset-camera" type="button" title="איפוס המצלמה">
             <svg class="icon" viewBox="0 0 24 24"><path d="M4.8 8A8 8 0 1 1 4 15"/><path d="M4.8 3.5V8h4.5"/></svg><span>איפוס</span>
           </button>
@@ -675,7 +807,7 @@
 
         <div class="error-message" id="error-message" role="alert">
           <strong>לא ניתן לטעון את הדגם</strong>
-          הפעילו שרת מקומי בתיקיית הפרויקט ובדקו שיש חיבור לאינטרנט לטעינת רכיב התצוגה.
+          הפעילו שרת מקומי בתיקיית הפרויקט ובדקו שיש חיבור לאינטרנט לטעינת רכיבי התצוגה.
         </div>
       </main>
 
@@ -686,14 +818,27 @@
   <noscript><div class="error-message" style="display:block">יש להפעיל JavaScript כדי להשתמש באפליקציה.</div></noscript>
 
   <script type="module">
+    import { createWalkTour } from '../walk-tour.js?v=4';
+
     const catalog = {
       exterior: {
-        src: 'temple_middot.glb?v=12',
-        poster: 'temple_middot_preview.png?v=12',
+        src: 'temple_middot.glb?v=15',
+        poster: 'temple_middot_preview.png?v=15',
         alt: 'דגם חוץ תלת־ממדי של בית המקדש לפי מסכת מידות',
         kicker: 'מבט אדריכלי',
         title: 'מתחם הר הבית',
         description: 'מן הר הבית דרך העזרות ועד ההיכל. בחרו תחנה במסלול.',
+        walk: { position: [-122, 0, 40], yaw: -Math.PI / 2, pitch: 0 },
+        stations: [
+          { position: [-122, 0, 40], yaw: -Math.PI / 2 },
+          { position: [-62, 0, 40], yaw: -Math.PI / 2 },
+          { position: [0.5, 3, 56], yaw: Math.PI },
+          { position: [13, 6.75, 40], yaw: -Math.PI / 2 },
+          { position: [14, 6.75, 10], yaw: 0 },
+          { position: [16.5, 6.75, 67], yaw: Math.PI },
+          { position: [19, 8, 35.5], yaw: -Math.PI / 2 },
+          { position: [44, 8, 40], yaw: -Math.PI / 2 },
+        ],
         items: [
           { title: 'הר הבית', short: 'המתחם החיצוני', kicker: 'מסכת מידות ב, א', description: 'הר הבית מוצג כריבוע הגדול המקיף את מערכת העזרות. מיקום העזרות בתוכו הוא השלמה פרשנית בהתאם לתיאור רובו מן הדרום, שני לו מן המזרח.', measurement: '500×500 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.2.1', orbit: '38deg 62deg auto' },
           { title: 'הסורג והחיל', short: 'גבול הקדושה והמעלות', kicker: 'מסכת מידות ב, ג', description: 'הסורג הנמוך מקיף את החיל. בדגם הוא מודגש ברצועה כחולה־אפורה כדי להבדיל בין מידה מפורשת לבין פרשנות גאומטרית.', measurement: 'סורג: 10 טפחים · 12 מעלות', source: 'https://www.sefaria.org/Mishnah_Middot.2.3', orbit: '20deg 68deg auto' },
@@ -712,6 +857,16 @@
         kicker: 'חתך פנים',
         title: 'האולם, ההיכל וכלי הקודש',
         description: 'חתך פתוח מן האולם דרך הקודש ועד קודש הקודשים בבית השני.',
+        walk: { position: [-8.5, 0, 0], yaw: -Math.PI / 2, pitch: 0 },
+        stations: [
+          { position: [-18, 0, 0], yaw: -Math.PI / 2 },
+          { position: [-9, 0, 0], yaw: -Math.PI / 2 },
+          { position: [-7, 0, 0], yaw: -Math.PI / 2 },
+          { position: [-1, 0, 1], yaw: -2.5 },
+          { position: [-1, 0, -1], yaw: -0.64 },
+          { position: [8, 0, -4.5], yaw: -Math.PI / 2 },
+          { position: [13, 0, 0], yaw: -Math.PI / 2 },
+        ],
         items: [
           { title: 'האולם', short: 'פרוכת, גפן ועטרות', kicker: 'מסכת מידות ג, ז', description: 'החתך כולל את שתים־עשרה המעלות, פרוכת הפתח הגבוהה, קורות הארז, שרשרות הזהב והעטרות, שני שולחנות, גפן הזהב ונברשת הילני המלכה.', measurement: 'עומק פנימי: 11 אמה · פתח: 20×40 אמה', source: 'https://he.wikipedia.org/wiki/אולם_(בית_המקדש)', orbit: '60deg 67deg auto' },
           { title: 'חלל הקודש', short: 'החלל המזרחי', kicker: 'מסכת מידות ד, ז', description: 'הקודש מוצג כחלל פתוח לצפייה. הקיר הדרומי והגג הונמכו או הוסרו כדי לאפשר לראות את הכלים במקומם.', measurement: '40×20 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.4.7', orbit: '38deg 66deg auto' },
@@ -738,8 +893,75 @@
     const downloadModel = document.querySelector('#download-model');
     const infoCard = document.querySelector('#info-card');
     const infoClose = document.querySelector('#info-close');
+    const walkToggle = document.querySelector('#toggle-walk');
+    const walkToggleLabel = walkToggle.querySelector('span');
     let activeModel = 'exterior';
     let activeItem = 0;
+    let resumeSpin = true;
+
+    const walkTour = createWalkTour({
+      stage,
+      canvas: document.querySelector('#walk-canvas'),
+      intro: document.querySelector('#walk-intro'),
+      startButton: document.querySelector('#walk-start'),
+      closeButton: document.querySelector('#walk-close'),
+      joystick: document.querySelector('#walk-joystick'),
+      joystickKnob: document.querySelector('#walk-joystick-knob'),
+      onProgress(progress) {
+        if (!walkTour.active) return;
+        progressBar.style.transform = `scaleX(${progress})`;
+      },
+      onReady() {
+        if (!walkTour.active) return;
+        statusText.textContent = 'סיור מוכן · גובה 1.60 מ׳';
+        progressBar.style.transform = 'scaleX(1)';
+        window.setTimeout(() => loadingLayer.classList.add('is-hidden'), 180);
+      },
+      onError(error) {
+        console.error('Walk tour failed to load', error);
+        statusText.textContent = 'שגיאה בטעינת הסיור';
+        statusDot.style.background = 'var(--danger)';
+        loadingLayer.classList.add('is-hidden');
+        errorMessage.style.display = 'block';
+      },
+      onPointerLockChange(locked) {
+        if (walkTour.active && !locked && matchMedia('(pointer: fine)').matches) {
+          statusText.textContent = 'לחצו על התצוגה להמשך הליכה';
+        } else if (walkTour.active) {
+          statusText.textContent = 'סיור מוכן · גובה 1.60 מ׳';
+        }
+      }
+    });
+
+    function setWalkMode(enabled) {
+      walkToggle.setAttribute('aria-pressed', String(enabled));
+      stage.classList.toggle('walk-active', enabled);
+      walkToggleLabel.textContent = enabled ? 'תצוגה' : 'סיור';
+      walkToggle.title = enabled ? 'חזרה לתצוגה האדריכלית' : 'מעבר לסיור רגלי בגובה 1.60 מטר';
+      errorMessage.style.display = 'none';
+      statusDot.style.background = '';
+      if (enabled) {
+        closeMobileNavigation();
+        infoCard.hidden = true;
+        resumeSpin = viewer.hasAttribute('auto-rotate');
+        viewer.removeAttribute('auto-rotate');
+        spinButton.setAttribute('aria-pressed', 'false');
+        loadingLayer.classList.remove('is-hidden');
+        progressBar.style.transform = 'scaleX(0)';
+        statusText.textContent = 'מכין את מצב הסיור…';
+        walkTour.enter({
+          source: catalog[activeModel].src,
+          spawn: catalog[activeModel].walk,
+          variant: activeModel,
+        });
+      } else {
+        walkTour.exit();
+        viewer.toggleAttribute('auto-rotate', resumeSpin);
+        spinButton.setAttribute('aria-pressed', String(resumeSpin));
+        loadingLayer.classList.add('is-hidden');
+        statusText.textContent = 'הדגם מוכן';
+      }
+    }
 
     function renderCatalog() {
       const section = catalog[activeModel];
@@ -768,10 +990,14 @@
       document.querySelector('#info-measurement').textContent = item.measurement;
       document.querySelector('#info-source').href = item.source;
       if (moveCamera) {
-        viewer.cameraOrbit = item.orbit;
-        viewer.cameraTarget = 'auto auto auto';
-        viewer.fieldOfView = '30deg';
-        viewer.jumpCameraToGoal();
+        if (walkTour.active) {
+          walkTour.jumpTo(catalog[activeModel].stations[index]);
+        } else {
+          viewer.cameraOrbit = item.orbit;
+          viewer.cameraTarget = 'auto auto auto';
+          viewer.fieldOfView = '30deg';
+          viewer.jumpCameraToGoal();
+        }
       }
     }
 
@@ -795,6 +1021,10 @@
       viewer.cameraOrbit = section.items[0].orbit;
       viewer.cameraTarget = 'auto auto auto';
       renderCatalog();
+      if (walkTour.active) {
+        infoCard.hidden = true;
+        walkTour.load(section.src, section.walk, name);
+      }
     }
 
     function closeMobileNavigation() {
@@ -819,16 +1049,19 @@
     });
 
     viewer.addEventListener('progress', event => {
+      if (walkTour.active) return;
       progressBar.style.transform = `scaleX(${event.detail.totalProgress})`;
     });
 
     viewer.addEventListener('load', () => {
+      if (walkTour.active) return;
       statusText.textContent = 'הדגם מוכן';
       progressBar.style.transform = 'scaleX(1)';
       window.setTimeout(() => loadingLayer.classList.add('is-hidden'), 220);
     });
 
     viewer.addEventListener('error', () => {
+      if (walkTour.active) return;
       statusText.textContent = 'שגיאה בטעינה';
       statusDot.style.background = 'var(--danger)';
       loadingLayer.classList.add('is-hidden');
@@ -836,6 +1069,10 @@
     });
 
     document.querySelector('#reset-camera').addEventListener('click', () => {
+      if (walkTour.active) {
+        walkTour.reset();
+        return;
+      }
       viewer.cameraOrbit = catalog[activeModel].items[0].orbit;
       viewer.cameraTarget = 'auto auto auto';
       viewer.fieldOfView = '30deg';
@@ -847,6 +1084,8 @@
       viewer.toggleAttribute('auto-rotate', !spinning);
       spinButton.setAttribute('aria-pressed', String(!spinning));
     });
+
+    walkToggle.addEventListener('click', () => setWalkMode(!walkTour.active));
 
     document.querySelector('#fullscreen-header').addEventListener('click', toggleFullscreen);
     document.querySelector('#fullscreen-dock').addEventListener('click', toggleFullscreen);
@@ -870,7 +1109,7 @@
       if (event.key === '1') switchModel('exterior');
       if (event.key === '2') switchModel('interior');
       if (event.key.toLowerCase() === 'r') document.querySelector('#reset-camera').click();
-      if (event.code === 'Space' && !event.repeat) {
+      if (event.code === 'Space' && !event.repeat && !walkTour.active) {
         event.preventDefault();
         spinButton.click();
       }
