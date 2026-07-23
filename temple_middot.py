@@ -91,6 +91,13 @@ ASSUMED = {
     "altar_height": 9.0,
     "altar_horn_height": 1.0,
     "label_height": 0.35,
+    # Middot names the gates and chambers but does not provide complete plans
+    # for their masonry. These values keep the reconstructions readable while
+    # preserving the sourced 10 x 20 cubit clear gate openings.
+    "azarah_gatehouse_width": 15.0,
+    "azarah_gatehouse_depth": 8.0,
+    "azarah_chamber_depth": 14.0,
+    "azarah_chamber_height": 12.0,
 }
 
 
@@ -128,6 +135,8 @@ COLLECTION_NAMES_HE = {
     "04 Women's Court Chambers": "04 לשכות עזרת הנשים",
     "05 Fifteen Curved Steps": "05 חמש עשרה המעלות",
     "06 Azarah": "06 העזרה",
+    "06 Azarah Gates": "06 שערי העזרה ובתי־השער",
+    "06 Azarah Chambers": "06 לשכות העזרה",
     "07 Altar and Service Area": "07 המזבח ובית המטבחיים",
     "08 Hall Steps": "08 מעלות האולם",
     "09 Sanctuary": "09 ההיכל",
@@ -154,6 +163,12 @@ MATERIAL_NAMES_HE = {
     "Ember": "גחלים לוחשות",
     "Water": "מים",
     "Wine": "יין",
+    "Terracotta": "חרס",
+    "Olive oil": "שמן זית",
+    "Hair and soot": "שיער ופיח",
+    "Altar limestone": "אבן מזבח חמימה",
+    "Altar shadow stone": "אבן מזבח – גוון צל",
+    "Altar upper stone": "אבן מזבח – גוון עליון",
 }
 
 # Prefix translations keep generated Blender Outliner names readable while
@@ -170,6 +185,8 @@ NAME_PREFIXES_HE = (
     ("Azarah west wall", "הכותל המערבי של העזרה"),
     ("Azarah south wall", "הכותל הדרומי של העזרה"),
     ("Azarah north wall", "הכותל הצפוני של העזרה"),
+    ("Azarah gate", "שער העזרה"),
+    ("Azarah chamber", "לשכת העזרה"),
     ("Altar foundation", "יסוד המזבח"),
     ("Altar middle", "גוף המזבח"),
     ("Altar upper", "ראש המזבח"),
@@ -312,6 +329,14 @@ def add_materials() -> None:
         ember_bsdf.inputs["Emission Strength"].default_value = 2.2
     material("Water", (0.08, 0.34, 0.58, 1.0), metallic=0.05, roughness=0.16)
     material("Wine", (0.34, 0.012, 0.02, 1.0), roughness=0.26)
+    material("Terracotta", (0.48, 0.16, 0.065, 1.0), roughness=0.86)
+    material("Olive oil", (0.52, 0.40, 0.055, 1.0), roughness=0.22)
+    material("Hair and soot", (0.035, 0.022, 0.014, 1.0), roughness=0.96)
+    # Three close warm-grey values keep the altar recognisably light while
+    # separating its foundation, body and upper ledges in flat web lighting.
+    material("Altar limestone", (0.78, 0.74, 0.66, 1.0), roughness=0.88)
+    material("Altar shadow stone", (0.66, 0.61, 0.52, 1.0), roughness=0.92)
+    material("Altar upper stone", (0.84, 0.80, 0.72, 1.0), roughness=0.86)
 
 
 def box(
@@ -583,6 +608,496 @@ def open_room(
     )
 
 
+def add_womens_chamber_shell(
+    name: str, center_x: float, center_y: float, base_z: float,
+    doorway_x_side: int,
+) -> None:
+    """Build one of Middot 2:5's unroofed 40-cubit corner chambers.
+
+    The size and lack of a roof are sourced. Door, paving, masonry articulation,
+    drainage and fittings are deliberately legible reconstruction details.
+    """
+    group = "04 Women's Court Chambers"
+    width = SOURCE["corner_chamber"][0]
+    wall, height = 0.9, 10.0
+    inner_wall_x = center_x + doorway_x_side * (width / 2 - wall / 2)
+    outer_wall_x = center_x - doorway_x_side * (width / 2 - wall / 2)
+    doorway_w, doorway_h = 6.0, 7.5
+    side_span = (width - doorway_w) / 2
+
+    # Stone paving is split into large slabs so the open-to-sky courts read at
+    # close range without producing an excessive web-model mesh count.
+    for row, offset_y in enumerate((-13.95, -4.65, 4.65, 13.95), 1):
+        for column, offset_x in enumerate((-13.95, -4.65, 4.65, 13.95), 1):
+            tile = box(
+                f"{name} – אבן ריצוף {row:02d}-{column:02d}",
+                (9.0, 9.0, 0.22),
+                (center_x + offset_x, center_y + offset_y, base_z + 0.11),
+                "Pale court stone", group, 0.035,
+            )
+            tile["certainty"] = "schematic"
+
+    # Three solid walls and an inward-facing wall with a proper doorway.
+    box(f"{name} – כותל חיצוני", (wall, width, height),
+        (outer_wall_x, center_y, base_z + height / 2),
+        "Jerusalem limestone", group, 0.08)
+    for y_side, direction in ((-1, "דרומי"), (1, "צפוני")):
+        box(f"{name} – כותל {direction}", (width, wall, height),
+            (center_x, center_y + y_side * (width / 2 - wall / 2),
+             base_z + height / 2), "Jerusalem limestone", group, 0.08)
+    for y_side, direction in ((-1, "דרומי"), (1, "צפוני")):
+        box(f"{name} – חזית פנימית {direction}",
+            (wall, side_span, height),
+            (inner_wall_x,
+             center_y + y_side * (doorway_w / 2 + side_span / 2),
+             base_z + height / 2), "Jerusalem limestone", group, 0.08)
+    box(f"{name} – משקוף הפתח", (wall, doorway_w, height - doorway_h),
+        (inner_wall_x, center_y,
+         base_z + doorway_h + (height - doorway_h) / 2),
+        "Jerusalem limestone", group, 0.08)
+    box(f"{name} – אבן הסף", (1.5, doorway_w, 0.32),
+        (inner_wall_x, center_y, base_z + 0.16),
+        "Pale court stone", group, 0.05)
+    for y_side in (-1, 1):
+        box(f"{name} – אומנת פתח", (1.35, 1.25, 8.4),
+            (inner_wall_x - doorway_x_side * 0.15,
+             center_y + y_side * (doorway_w / 2 + 0.25),
+             base_z + 4.2), "Pale court stone", group, 0.09)
+
+    # A timber leaf stands open against the inside wall, with bronze hinge and
+    # studs. Its geometry is schematic because Middot gives no door design.
+    leaf_x = inner_wall_x - doorway_x_side * 3.15
+    leaf_y = center_y + doorway_w / 2 + 0.30
+    box(f"{name} – דלת פתוחה", (5.8, 0.32, 7.0),
+        (leaf_x, leaf_y, base_z + 3.5), "Wood", group, 0.07)
+    beam_between(f"{name} – ציר הדלת",
+                 (inner_wall_x - doorway_x_side * 0.25, leaf_y, base_z + 0.4),
+                 (inner_wall_x - doorway_x_side * 0.25, leaf_y, base_z + 6.7),
+                 0.11, "Bronze", group, 12)
+    for stud_x in (-1.6, 0.0, 1.6):
+        for stud_z in (1.7, 3.5, 5.3):
+            sphere(f"{name} – מסמר דלת", 0.11,
+                   (leaf_x + stud_x, leaf_y - 0.18, base_z + stud_z),
+                   "Bronze", group, subdivisions=1)
+
+    # A moulded coping caps each wall but leaves the chamber explicitly
+    # unroofed, as stated by Middot and its citation of Ezekiel 46.
+    box(f"{name} – כרכוב צפוני", (width + 0.6, 1.25, 0.55),
+        (center_x, center_y + width / 2, base_z + height + 0.275),
+        "Pale court stone", group, 0.08)
+    box(f"{name} – כרכוב דרומי", (width + 0.6, 1.25, 0.55),
+        (center_x, center_y - width / 2, base_z + height + 0.275),
+        "Pale court stone", group, 0.08)
+    for x_side, direction in ((-1, "מזרחי"), (1, "מערבי")):
+        box(f"{name} – כרכוב {direction}", (1.25, width - 1.2, 0.55),
+            (center_x + x_side * width / 2, center_y,
+             base_z + height + 0.275), "Pale court stone", group, 0.08)
+
+    # Small central drain and bronze grate explain how an unroofed paved room
+    # can shed rainwater; their exact form is an architectural reconstruction.
+    box(f"{name} – פתח ניקוז", (2.1, 2.1, 0.08),
+        (center_x, center_y, base_z + 0.245), "Dark opening", group, 0.02)
+    for offset in (-0.7, -0.23, 0.23, 0.7):
+        box(f"{name} – סורג ניקוז", (0.10, 1.9, 0.10),
+            (center_x + offset, center_y, base_z + 0.33),
+            "Bronze", group, 0.02)
+
+    label(name, center_x, center_y, base_z + 0.38, 1.65)
+
+
+def add_amphora(
+    name: str, x: float, y: float, base_z: float,
+    contents: str = "Olive oil", scale: float = 1.0,
+) -> None:
+    """Add a readable low-poly storage jar with neck, rim and two handles."""
+    group = "04 Women's Court Chambers"
+    body = sphere(name, 1.05 * scale, (x, y, base_z + 1.18 * scale),
+                  "Terracotta", group, scale=(0.78, 0.78, 1.12), subdivisions=2)
+    body["contents"] = "wine" if contents == "Wine" else "olive oil"
+    cylinder(f"{name} – צוואר", 0.38 * scale, 0.75 * scale,
+             (x, y, base_z + 2.42 * scale), "Terracotta", group, 24)
+    torus(f"{name} – שפה", 0.42 * scale, 0.09 * scale,
+          (x, y, base_z + 2.82 * scale), "Terracotta", group)
+    cylinder(f"{name} – תכולה", 0.31 * scale, 0.08 * scale,
+             (x, y, base_z + 2.78 * scale), contents, group, 24)
+    box(f"{name} – רגל", (0.48 * scale, 0.48 * scale, 0.28 * scale),
+        (x, y, base_z + 0.14 * scale), "Terracotta", group, 0.06)
+    for side in (-1, 1):
+        torus(f"{name} – ידית", 0.36 * scale, 0.075 * scale,
+              (x + side * 0.72 * scale, y, base_z + 2.08 * scale),
+              "Terracotta", group, rotation=(math.pi / 2, 0, 0))
+
+
+def add_cauldron(name: str, x: float, y: float, base_z: float) -> None:
+    """Add a pot over an ember hearth for the Nazirite peace offering."""
+    group = "04 Women's Court Chambers"
+    box(f"{name} – מוקד אבן", (5.6, 5.0, 0.55),
+        (x, y, base_z + 0.275), "Jerusalem limestone", group, 0.10)
+    cylinder(f"{name} – אפר", 1.75, 0.14, (x, y, base_z + 0.62),
+             "Ash", group, 32)
+    for ember_index, (dx, dy) in enumerate(((-0.8, -0.4), (0.0, 0.55),
+                                             (0.85, -0.25), (0.1, -0.65)), 1):
+        sphere(f"{name} – גחל {ember_index}", 0.34,
+               (x + dx, y + dy, base_z + 0.82), "Ember", group,
+               scale=(1.5, 0.65, 0.45), subdivisions=1)
+    for leg_x, leg_y in ((-1.35, -0.75), (1.35, -0.75), (0.0, 1.35)):
+        beam_between(f"{name} – רגל דוד",
+                     (x + leg_x, y + leg_y, base_z + 0.65),
+                     (x + leg_x, y + leg_y, base_z + 2.05),
+                     0.14, "Bronze", group, 12)
+    cylinder(f"{name} – דוד", 2.05, 1.65, (x, y, base_z + 2.75),
+             "Bronze", group, 40)
+    torus(f"{name} – שפת הדוד", 2.02, 0.14,
+          (x, y, base_z + 3.60), "Bronze", group)
+    cylinder(f"{name} – תבשיל השלמים", 1.82, 0.10,
+             (x, y, base_z + 3.58), "Wine", group, 40)
+    for side in (-1, 1):
+        torus(f"{name} – ידית", 0.52, 0.10,
+              (x + side * 2.05, y, base_z + 3.02), "Bronze", group,
+              rotation=(math.pi / 2, 0, 0))
+
+
+def add_log_bundle(
+    name: str, x: float, y: float, base_z: float,
+    length: float = 6.0, rejected: bool = False,
+) -> None:
+    """Stack six inspectable altar-wood logs; rejected bundles show bore marks."""
+    group = "04 Women's Court Chambers"
+    log_index = 0
+    for row, z_offset in enumerate((0.34, 0.92, 1.50)):
+        count = 3 if row == 0 else 2 if row == 1 else 1
+        for column in range(count):
+            log_index += 1
+            dx = (column - (count - 1) / 2) * 0.72
+            beam_between(f"{name} – קורה {log_index}",
+                         (x + dx, y - length / 2, base_z + z_offset),
+                         (x + dx, y + length / 2, base_z + z_offset),
+                         0.30, "Cedar", group, 12)
+            if rejected and log_index <= 3:
+                for mark_index, along in enumerate((-1.2, 0.55), 1):
+                    sphere(f"{name} – נקב תולעת {log_index}-{mark_index}",
+                           0.10, (x + dx - 0.29, y + along,
+                                  base_z + z_offset + 0.05),
+                           "Hair and soot", group, subdivisions=1)
+
+
+def add_nazirite_chamber_details(x: float, y: float, base_z: float) -> None:
+    group = "04 Women's Court Chambers"
+    add_cauldron("לשכת הנזירים – דוד שלמים מזרחי", x - 9.0, y - 8.5, base_z)
+    add_cauldron("לשכת הנזירים – דוד שלמים מערבי", x + 7.5, y - 8.5, base_z)
+    # Hair/soot beneath the cauldron visualises the explicit ritual action.
+    for index, offset in enumerate((-0.7, -0.35, 0.0, 0.35, 0.7), 1):
+        beam_between(f"לשכת הנזירים – שיער תחת הדוד {index}",
+                     (x + 7.5 + offset, y - 9.1, base_z + 0.98),
+                     (x + 7.0 + offset, y - 8.0, base_z + 0.90),
+                     0.035, "Hair and soot", group, 8)
+    box("לשכת הנזירים – ספסל גילוח", (8.0, 2.2, 0.55),
+        (x - 6.0, y + 8.5, base_z + 1.65), "Cedar", group, 0.08)
+    for leg_x in (-3.3, 3.3):
+        box("לשכת הנזירים – רגל ספסל", (0.45, 1.55, 1.4),
+            (x - 6.0 + leg_x, y + 8.5, base_z + 0.7), "Cedar", group, 0.04)
+    box("לשכת הנזירים – תער", (1.8, 0.36, 0.08),
+        (x - 6.0, y + 8.0, base_z + 2.02), "Bronze", group, 0.04)
+    box("לשכת הנזירים – ידית התער", (0.9, 0.22, 0.18),
+        (x - 7.1, y + 8.0, base_z + 2.05), "Wood", group, 0.04)
+    add_log_bundle("לשכת הנזירים – עצי הסקה", x + 10.0, y + 8.0,
+                   base_z, length=5.0)
+    for basket_index, basket_x in enumerate((x + 3.0, x + 6.0), 1):
+        torus(f"לשכת הנזירים – סל מצות {basket_index}", 1.25, 0.14,
+              (basket_x, y + 9.0, base_z + 0.65), "Cedar", group)
+        cylinder(f"לשכת הנזירים – מצות {basket_index}", 1.05, 0.16,
+                 (basket_x, y + 9.0, base_z + 0.70),
+                 "Pale court stone", group, 24)
+
+
+def add_wood_chamber_details(x: float, y: float, base_z: float) -> None:
+    group = "04 Women's Court Chambers"
+    for index, (dx, dy) in enumerate(((-11, -10), (-5, -10), (1, -10),
+                                      (-11, 7), (-5, 7), (1, 7)), 1):
+        add_log_bundle(f"לשכת דיר העצים – ערמת עצים כשרה {index}",
+                       x + dx, y + dy, base_z, length=6.4)
+    add_log_bundle("לשכת דיר העצים – עצים פסולים ומתולעים",
+                   x + 11.0, y + 9.0, base_z, length=6.0, rejected=True)
+    box("לשכת דיר העצים – שולחן בדיקה", (9.0, 3.0, 0.45),
+        (x + 6.0, y - 3.0, base_z + 2.55), "Cedar", group, 0.07)
+    for dx in (-3.7, 3.7):
+        box("לשכת דיר העצים – רגל שולחן", (0.45, 2.2, 2.3),
+            (x + 6.0 + dx, y - 3.0, base_z + 1.15), "Cedar", group, 0.04)
+    beam_between("לשכת דיר העצים – קורה בבדיקה",
+                 (x + 2.3, y - 3.0, base_z + 3.15),
+                 (x + 9.7, y - 3.0, base_z + 3.15),
+                 0.34, "Cedar", group, 16)
+    # Simple axe and awl communicate inspection/sorting without asserting a
+    # specific ancient tool kit.
+    beam_between("לשכת דיר העצים – ידית גרזן",
+                 (x + 5.0, y - 2.2, base_z + 2.90),
+                 (x + 7.3, y - 2.2, base_z + 3.00),
+                 0.10, "Wood", group, 12)
+    box("לשכת דיר העצים – להב גרזן", (0.55, 0.16, 0.75),
+        (x + 7.55, y - 2.2, base_z + 3.0), "Bronze", group, 0.04)
+    box("לשכת דיר העצים – מחיצת עצים פסולים", (0.35, 10.0, 3.0),
+        (x + 14.8, y + 8.0, base_z + 1.5), "Assumed element", group, 0.04)
+
+
+def add_lepers_chamber_details(x: float, y: float, base_z: float) -> None:
+    group = "04 Women's Court Chambers"
+    bath_x, bath_y = x - 5.0, y - 2.5
+    # Raised cutaway edges keep the immersion pool visible above the existing
+    # solid court platform; the historical pool would of course be excavated.
+    for dx in (-6.5, 6.5):
+        box("לשכת המצורעים – דופן המקווה", (0.8, 10.0, 3.0),
+            (bath_x + dx, bath_y, base_z + 1.5),
+            "Jerusalem limestone", group, 0.08)
+    for dy in (-5.0, 5.0):
+        box("לשכת המצורעים – דופן המקווה", (13.8, 0.8, 3.0),
+            (bath_x, bath_y + dy, base_z + 1.5),
+            "Jerusalem limestone", group, 0.08)
+    box("לשכת המצורעים – חלל המקווה", (12.0, 8.2, 0.35),
+        (bath_x, bath_y, base_z + 0.36), "Dark opening", group, 0.03)
+    box("לשכת המצורעים – מי המקווה", (11.7, 7.9, 0.16),
+        (bath_x, bath_y, base_z + 0.62), "Water", group, 0.02)
+    for step_index in range(6):
+        step_w = 5.4 - step_index * 0.72
+        box(f"לשכת המצורעים – מעלה במקווה {step_index + 1}",
+            (step_w, 1.0, 0.42),
+            (bath_x + 3.0 + step_index * 0.55,
+             bath_y - 4.0 + step_index * 0.75,
+             base_z + 2.65 - step_index * 0.38),
+            "Pale court stone", group, 0.04)
+    beam_between("לשכת המצורעים – מאחז ירידה",
+                 (bath_x + 5.5, bath_y - 4.0, base_z + 3.5),
+                 (bath_x + 3.5, bath_y + 0.5, base_z + 1.5),
+                 0.10, "Bronze", group, 12)
+    box("לשכת המצורעים – ספסל הכנה", (9.0, 2.2, 0.48),
+        (x + 7.0, y + 10.0, base_z + 1.55), "Pale court stone", group, 0.08)
+    for dx in (-3.6, 3.6):
+        box("לשכת המצורעים – רגל ספסל", (0.55, 1.6, 1.3),
+            (x + 7.0 + dx, y + 10.0, base_z + 0.65),
+            "Jerusalem limestone", group, 0.05)
+    cylinder("לשכת המצורעים – כד מים", 0.85, 1.65,
+             (x + 9.5, y + 9.8, base_z + 2.62), "Terracotta", group, 24)
+    torus("לשכת המצורעים – שפת כד", 0.82, 0.10,
+          (x + 9.5, y + 9.8, base_z + 3.46), "Terracotta", group)
+    box("לשכת המצורעים – תעלת ניקוז", (14.0, 0.75, 0.28),
+        (bath_x + 3.0, bath_y + 6.0, base_z + 0.20),
+        "Assumed element", group, 0.03)
+
+
+def add_oil_chamber_details(x: float, y: float, base_z: float) -> None:
+    group = "04 Women's Court Chambers"
+    # Stone-and-timber shelving, large storage jars and smaller measuring jars
+    # distinguish wine from oil while preserving the sourced shared storage use.
+    for shelf_y in (y - 12.5, y + 12.5):
+        for shelf_z in (1.2, 3.8):
+            box("לשכת בית שמניה – מדף קנקנים", (22.0, 1.4, 0.35),
+                (x - 3.0, shelf_y, base_z + shelf_z), "Cedar", group, 0.05)
+        for shelf_x in (x - 13.0, x + 7.0):
+            box("לשכת בית שמניה – תמיכת מדף", (0.5, 1.2, 4.2),
+                (shelf_x, shelf_y, base_z + 2.1), "Cedar", group, 0.04)
+    jar_positions = ((-11, -12.3), (-6, -12.3), (-1, -12.3), (4, -12.3),
+                     (-11, 12.3), (-6, 12.3), (-1, 12.3), (4, 12.3),
+                     (10, -7), (10, 0), (10, 7))
+    for index, (dx, dy) in enumerate(jar_positions, 1):
+        contents = "Wine" if index % 3 == 0 else "Olive oil"
+        add_amphora(f"לשכת בית שמניה – קנקן {index:02d}",
+                    x + dx, y + dy, base_z + (1.4 if abs(dy) > 10 else 0.0),
+                    contents, scale=0.88 if abs(dy) > 10 else 1.20)
+    box("לשכת בית שמניה – שולחן מזיגה", (9.0, 4.0, 0.48),
+        (x - 4.0, y, base_z + 2.55), "Pale court stone", group, 0.08)
+    for dx in (-3.7, 3.7):
+        box("לשכת בית שמניה – רגל שולחן", (0.55, 3.1, 2.3),
+            (x - 4.0 + dx, y, base_z + 1.15),
+            "Jerusalem limestone", group, 0.05)
+    for vessel_index, (dx, contents) in enumerate(((-2.0, "Olive oil"),
+                                                   (0.0, "Wine"),
+                                                   (2.0, "Olive oil")), 1):
+        cylinder(f"לשכת בית שמניה – כלי מידה {vessel_index}", 0.65, 0.9,
+                 (x - 4.0 + dx, y, base_z + 3.25),
+                 "Bronze", group, 24)
+        cylinder(f"לשכת בית שמניה – תכולת כלי מידה {vessel_index}",
+                 0.57, 0.06, (x - 4.0 + dx, y, base_z + 3.72),
+                 contents, group, 24)
+    cylinder("לשכת בית שמניה – אגן איסוף", 2.2, 0.28,
+             (x - 4.0, y + 4.0, base_z + 0.35), "Bronze", group, 32)
+    cylinder("לשכת בית שמניה – שמן באגן", 2.0, 0.08,
+             (x - 4.0, y + 4.0, base_z + 0.52), "Olive oil", group, 32)
+
+
+def add_gate_doors_x(
+    name: str, center_x: float, center_y: float, threshold_z: float,
+    mat: str, group: str,
+) -> None:
+    """Two gate leaves shown folded open against a wall running east-west."""
+    for side in (-1, 1):
+        leaf_x = center_x + side * 4.55
+        box(f"{name} – כנף דלת {'מערבית' if side > 0 else 'מזרחית'}",
+            (0.42, 4.8, 18.5),
+            (leaf_x, center_y, threshold_z + 9.25), mat, group, 0.08)
+        beam_between(f"{name} – ציר דלת",
+                     (center_x + side * 4.82, center_y, threshold_z + 0.7),
+                     (center_x + side * 4.82, center_y, threshold_z + 17.8),
+                     0.14, "Bronze", group, 12)
+        for stud_y in (-1.45, 0.0, 1.45):
+            for stud_z in (4.0, 9.2, 14.4):
+                sphere(f"{name} – מסמר דלת", 0.16,
+                       (leaf_x - side * 0.24, center_y + stud_y,
+                        threshold_z + stud_z),
+                       "Bronze", group, subdivisions=1)
+        torus(f"{name} – טבעת משיכה", 0.42, 0.08,
+              (leaf_x - side * 0.26, center_y, threshold_z + 8.8),
+              "Bronze", group, rotation=(0, math.pi / 2, 0))
+
+
+def add_gate_doors_y(
+    name: str, center_x: float, center_y: float, threshold_z: float,
+    mat: str, group: str,
+) -> None:
+    """Two gate leaves shown folded open against a wall running north-south."""
+    for side in (-1, 1):
+        leaf_y = center_y + side * 4.55
+        box(f"{name} – כנף דלת {'צפונית' if side > 0 else 'דרומית'}",
+            (4.8, 0.42, 18.5),
+            (center_x, leaf_y, threshold_z + 9.25), mat, group, 0.08)
+        beam_between(f"{name} – ציר דלת",
+                     (center_x, center_y + side * 4.82, threshold_z + 0.7),
+                     (center_x, center_y + side * 4.82, threshold_z + 17.8),
+                     0.14, "Bronze", group, 12)
+        for stud_x in (-1.45, 0.0, 1.45):
+            for stud_z in (4.0, 9.2, 14.4):
+                sphere(f"{name} – מסמר דלת", 0.16,
+                       (center_x + stud_x, leaf_y + side * 0.24,
+                        threshold_z + stud_z),
+                       "Bronze", group, subdivisions=1)
+        torus(f"{name} – טבעת משיכה", 0.42, 0.08,
+              (center_x, leaf_y + side * 0.26, threshold_z + 8.8),
+              "Bronze", group, rotation=(math.pi / 2, 0, 0))
+
+
+def add_azarah_gatehouse_x(
+    name: str, center_x: float, center_y: float, threshold_z: float,
+    door_mat: str = "Wood", upper_storey: bool = False,
+) -> None:
+    """Detailed square-headed gatehouse for a north or south Azarah wall."""
+    group = "06 Azarah Gates"
+    width = ASSUMED["azarah_gatehouse_width"]
+    depth = ASSUMED["azarah_gatehouse_depth"]
+    for side in (-1, 1):
+        box(f"{name} – אומנת שער",
+            (2.0, depth, 22.0),
+            (center_x + side * (width / 2 - 1.0), center_y,
+             threshold_z + 11.0),
+            "Jerusalem limestone", group, 0.16)
+        box(f"{name} – בסיס אומנה", (2.7, depth + 0.8, 0.8),
+            (center_x + side * (width / 2 - 1.0), center_y,
+             threshold_z + 0.4), "Pale court stone", group, 0.10)
+        box(f"{name} – כותרת אומנה", (2.8, depth + 0.8, 1.0),
+            (center_x + side * (width / 2 - 1.0), center_y,
+             threshold_z + 20.5), "Pale court stone", group, 0.12)
+    box(f"{name} – משקוף", (width, depth, 3.0),
+        (center_x, center_y, threshold_z + 21.5),
+        "Jerusalem limestone", group, 0.12)
+    box(f"{name} – כרכוב", (width + 1.2, depth + 1.2, 0.8),
+        (center_x, center_y, threshold_z + 23.4),
+        "Pale court stone", group, 0.12)
+    box(f"{name} – אבן הסף", (10.5, depth, 0.55),
+        (center_x, center_y, threshold_z + 0.275),
+        "Pale court stone", group, 0.06)
+    add_gate_doors_x(name, center_x, center_y, threshold_z, door_mat, group)
+
+    if upper_storey:
+        box(f"{name} – עליית השומרים", (13.0, depth - 0.6, 8.0),
+            (center_x, center_y, threshold_z + 27.8),
+            "Assumed element", group, 0.14)
+        for side in (-1, 1):
+            box(f"{name} – חלון העלייה", (2.4, 0.16, 3.0),
+                (center_x + side * 3.5, center_y - depth / 2 - 0.10,
+                 threshold_z + 28.0), "Dark opening", group, 0.08)
+        box(f"{name} – גג העלייה", (14.0, depth + 0.5, 0.7),
+            (center_x, center_y, threshold_z + 32.15),
+            "Pale court stone", group, 0.10)
+    label(name, center_x, center_y, threshold_z + (33.0 if upper_storey else 24.2),
+          1.45)
+
+
+def add_azarah_gatehouse_y(
+    name: str, center_x: float, center_y: float, threshold_z: float,
+    door_mat: str = "Wood",
+) -> None:
+    """Detailed gatehouse for the eastern Nicanor opening."""
+    group = "06 Azarah Gates"
+    width = ASSUMED["azarah_gatehouse_width"]
+    depth = ASSUMED["azarah_gatehouse_depth"]
+    for side in (-1, 1):
+        box(f"{name} – אומנת שער",
+            (depth, 2.0, 22.0),
+            (center_x, center_y + side * (width / 2 - 1.0),
+             threshold_z + 11.0),
+            "Jerusalem limestone", group, 0.16)
+        box(f"{name} – בסיס אומנה", (depth + 0.8, 2.7, 0.8),
+            (center_x, center_y + side * (width / 2 - 1.0),
+             threshold_z + 0.4), "Pale court stone", group, 0.10)
+        box(f"{name} – כותרת אומנה", (depth + 0.8, 2.8, 1.0),
+            (center_x, center_y + side * (width / 2 - 1.0),
+             threshold_z + 20.5), "Pale court stone", group, 0.12)
+    box(f"{name} – משקוף", (depth, width, 3.0),
+        (center_x, center_y, threshold_z + 21.5),
+        "Jerusalem limestone", group, 0.12)
+    box(f"{name} – כרכוב", (depth + 1.2, width + 1.2, 0.8),
+        (center_x, center_y, threshold_z + 23.4),
+        "Pale court stone", group, 0.12)
+    box(f"{name} – אבן הסף", (depth, 10.5, 0.55),
+        (center_x, center_y, threshold_z + 0.275),
+        "Pale court stone", group, 0.06)
+    add_gate_doors_y(name, center_x, center_y, threshold_z, door_mat, group)
+    label(name, center_x, center_y, threshold_z + 24.2, 1.7)
+
+
+def add_chamber_shell(
+    name: str, center_x: float, side: int, width: float, base_z: float,
+) -> tuple[float, float]:
+    """Add a north/south wall chamber with a didactic partial roof cutaway."""
+    group = "06 Azarah Chambers"
+    depth = ASSUMED["azarah_chamber_depth"]
+    height = ASSUMED["azarah_chamber_height"]
+    outer_y = COURT_CENTER_Y + side * SOURCE["azarah"][1] / 2
+    inner_y = outer_y - side * depth
+    center_y = (outer_y + inner_y) / 2
+    wall = 0.8
+    box(f"{name} – כותל חיצוני", (width, wall, height),
+        (center_x, outer_y - side * wall / 2, base_z + height / 2),
+        "Jerusalem limestone", group, 0.08)
+    for end in (-1, 1):
+        box(f"{name} – כותל צד", (wall, depth, height),
+            (center_x + end * (width / 2 - wall / 2), center_y,
+             base_z + height / 2), "Jerusalem limestone", group, 0.08)
+    door_w, door_h = 4.0, 7.0
+    side_span = (width - door_w) / 2
+    for end in (-1, 1):
+        box(f"{name} – חזית {'מערבית' if end > 0 else 'מזרחית'}",
+            (side_span, wall, height),
+            (center_x + end * (door_w / 2 + side_span / 2),
+             inner_y + side * wall / 2, base_z + height / 2),
+            "Jerusalem limestone", group, 0.08)
+    box(f"{name} – משקוף הפתח", (door_w, wall, height - door_h),
+        (center_x, inner_y + side * wall / 2,
+         base_z + door_h + (height - door_h) / 2),
+        "Jerusalem limestone", group, 0.08)
+    box(f"{name} – דלת פתוחה", (3.7, 0.28, 6.6),
+        (center_x + 2.05, inner_y + side * 1.9, base_z + 3.3),
+        "Wood", group, 0.06)
+    # Only the outer half is roofed, exposing the characteristic contents in
+    # the overview while still reading as a chamber rather than a low pen.
+    roof_depth = depth * 0.54
+    box(f"{name} – גג חתוך לתצוגה", (width + 0.6, roof_depth, 0.65),
+        (center_x, outer_y - side * roof_depth / 2, base_z + height + 0.325),
+        "Pale court stone", group, 0.10)
+    box(f"{name} – כרכוב", (width + 0.8, 0.9, 0.7),
+        (center_x, outer_y - side * 0.45, base_z + height + 0.35),
+        "Pale court stone", group, 0.08)
+    label(name, center_x, center_y, base_z + height + 1.0, 1.18)
+    return center_y, inner_y
+
+
 def semi_disc(
     name: str,
     center_x: float,
@@ -633,6 +1148,7 @@ def ramp_wedge(
     base_z: float,
     rise: float,
     group: str,
+    mat: str = "White altar stone",
 ) -> None:
     half = width_x / 2
     vertices = [
@@ -654,7 +1170,7 @@ def ramp_wedge(
     mesh.update()
     obj = bpy.data.objects.new(hebrew_name(name), mesh)
     collection(group).objects.link(obj)
-    obj.data.materials.append(MATERIALS["White altar stone"])
+    obj.data.materials.append(MATERIALS[mat])
 
 
 def build_ground_and_mount() -> None:
@@ -767,16 +1283,36 @@ def build_womens_court() -> None:
              index * 0.5 + 0.25),
             "Pale court stone", "04 Women's Court")
 
+    # This is the eastern entrance into the Women's Court, not Nicanor's
+    # Gate. Its architectural treatment is schematic because Middot does not
+    # give it the name or detailed construction supplied for Nicanor.
+    for side in (-1, 1):
+        box("הפתח המזרחי לעזרת הנשים – אומנה סכמטית", (4.5, 1.6, 14.0),
+            (WOMEN_EAST_X, COURT_CENTER_Y + side * 6.0, level + 7.0),
+            "Assumed element", "04 Women's Court", 0.12)
+        box("הפתח המזרחי לעזרת הנשים – כנף פתוחה", (3.8, 0.32, 12.0),
+            (WOMEN_EAST_X - 1.8, COURT_CENTER_Y + side * 4.7,
+             level + 6.0), "Wood", "04 Women's Court", 0.06)
+    box("הפתח המזרחי לעזרת הנשים – משקוף סכמטי", (4.5, 14.0, 2.0),
+        (WOMEN_EAST_X, COURT_CENTER_Y, level + 15.0),
+        "Assumed element", "04 Women's Court", 0.12)
+    label("הפתח המזרחי לעזרת הנשים", WOMEN_EAST_X, COURT_CENTER_Y,
+          level + 16.2, 1.35)
+
     inset = width / 2 - SOURCE["corner_chamber"][0] / 2
     rooms = [
-        ("לשכת הנזירים – דרום מזרח", center_x - inset, COURT_CENTER_Y - inset),
-        ("לשכת דיר העצים – צפון מזרח", center_x - inset, COURT_CENTER_Y + inset),
-        ("לשכת המצורעים – צפון מערב", center_x + inset, COURT_CENTER_Y + inset),
-        ("לשכת בית שמניה – דרום מערב", center_x + inset, COURT_CENTER_Y - inset),
+        ("לשכת הנזירים – דרום מזרח", center_x - inset,
+         COURT_CENTER_Y - inset, 1, add_nazirite_chamber_details),
+        ("לשכת דיר העצים – צפון מזרח", center_x - inset,
+         COURT_CENTER_Y + inset, 1, add_wood_chamber_details),
+        ("לשכת המצורעים – צפון מערב", center_x + inset,
+         COURT_CENTER_Y + inset, -1, add_lepers_chamber_details),
+        ("לשכת בית שמניה – דרום מערב", center_x + inset,
+         COURT_CENTER_Y - inset, -1, add_oil_chamber_details),
     ]
-    for name, x, y in rooms:
-        open_room(name, x, y, 40, 40, level)
-        label(name, x, y, level + 0.2, 1.65)
+    for name, x, y, doorway_side, detail_builder in rooms:
+        add_womens_chamber_shell(name, x, y, level, doorway_side)
+        detail_builder(x, y, level + 0.34)
 
     # The Second Temple balcony (gezuztra) around the Women's Court is shown
     # as a narrow timber gallery with a simple balustrade.
@@ -842,12 +1378,18 @@ def build_azarah() -> None:
     gated_wall_y("Azarah west wall", AZARAH_WEST_X, COURT_CENTER_Y,
                  width_y, wall_t, wall_h, priests,
                  [], "06 Azarah")
-    gated_wall_x("Azarah south wall", center_x, COURT_SOUTH_Y,
-                 width_x, wall_t, wall_h, 0,
-                 [(x, gate_w) for x in (55, 105, 165)], "06 Azarah")
-    gated_wall_x("Azarah north wall", center_x, COURT_NORTH_Y,
-                 width_x, wall_t, wall_h, 0,
-                 [(x, gate_w) for x in (55, 105, 165)], "06 Azarah")
+    side_openings = [(x, gate_w) for x in (55, 105, 165)]
+    # The flat-mount reconstruction needs a retaining section below the side
+    # walls. Both it and the upper wall are interrupted at the gates so that
+    # the passages remain visible instead of becoming shallow notches.
+    for wall_name, wall_y in (("Azarah south wall", COURT_SOUTH_Y),
+                              ("Azarah north wall", COURT_NORTH_Y)):
+        gated_wall_x(f"{wall_name} – מסד", center_x, wall_y,
+                     width_x, wall_t, israel, 0,
+                     side_openings, "06 Azarah")
+        gated_wall_x(wall_name, center_x, wall_y,
+                     width_x, wall_t, wall_h, israel,
+                     side_openings, "06 Azarah")
 
     # Three half-cubit steps above the one-cubit rise in Middot 2:6.
     for index in range(3):
@@ -860,6 +1402,242 @@ def build_azarah() -> None:
           israel + 0.2, 1.5)
     label("עזרת הכוהנים – 11 אמה", AZARAH_EAST_X + 16.5, COURT_CENTER_Y,
           priests + 0.2, 1.5)
+
+
+def build_azarah_gates_and_chambers() -> None:
+    """Seven-gate tradition (Middot 1:4-5) and six court chambers (5:3-4)."""
+    threshold = SOURCE["israel_court_level"]
+    gate_xs = (55.0, 105.0, 165.0)
+
+    # South, east-to-west. The Mishna names these three gates but does not
+    # state their spacing; the coordinates retain the earlier schematic plan.
+    south_gates = (
+        (gate_xs[0], "שער המים"),
+        (gate_xs[1], "שער הבכורות"),
+        (gate_xs[2], "שער הדלק"),
+    )
+    for gate_x, gate_name in south_gates:
+        add_azarah_gatehouse_x(gate_name, gate_x, COURT_SOUTH_Y,
+                               threshold, "Wood")
+
+    # North, east-to-west. The Gate of the Spark carried an upper chamber;
+    # the House of the Hearth is expanded below as a roofed guard building.
+    north_gates = (
+        (gate_xs[0], "שער בית המוקד", False),
+        (gate_xs[1], "שער הקרבן", False),
+        (gate_xs[2], "שער הניצוץ", True),
+    )
+    for gate_x, gate_name, upper in north_gates:
+        add_azarah_gatehouse_x(gate_name, gate_x, COURT_NORTH_Y,
+                               threshold, "Wood", upper)
+
+    # Nicanor's eastern doors famously remained bronze. Their chambers stood
+    # one on either side: Pinchas the vestment keeper and the griddle-cake
+    # makers. Their exact dimensions here are deliberately schematic.
+    nicanor_name = "שער העזרה המזרחי – שער ניקנור"
+    add_azarah_gatehouse_y(nicanor_name, AZARAH_EAST_X, COURT_CENTER_Y,
+                           threshold, "Bronze")
+    nicanor_room_x = AZARAH_EAST_X + 8.5
+    for side, room_name in ((-1, "לשכת עושי חביתין"),
+                            (1, "לשכת פנחס המלביש")):
+        room_y = COURT_CENTER_Y + side * 13.0
+        box(f"{room_name} – רצפה", (14, 10, 0.5),
+            (nicanor_room_x, room_y, threshold + 0.25),
+            "Pale court stone", "06 Azarah Gates", 0.06)
+        open_room(room_name, nicanor_room_x, room_y, 14, 10, threshold,
+                  wall_height=9.0, wall_thickness=0.8,
+                  group="06 Azarah Gates")
+        # A recessed doorway on the side facing Nicanor's passage makes the
+        # relationship between the gate and its two flanking chambers clear.
+        doorway_y = room_y - side * 5.05
+        box(f"{room_name} – פתח אל שער ניקנור", (4.0, 0.16, 6.5),
+            (nicanor_room_x, doorway_y, threshold + 3.25),
+            "Dark opening", "06 Azarah Gates", 0.08)
+        box(f"{room_name} – דלת פתוחה", (3.7, 0.28, 6.2),
+            (nicanor_room_x + 2.1, doorway_y - side * 1.8,
+             threshold + 3.1), "Wood", "06 Azarah Gates", 0.06)
+        box(f"{room_name} – גג אחורי", (14.5, 5.0, 0.6),
+            (nicanor_room_x + 0.2, room_y + side * 2.5,
+             threshold + 9.3),
+            "Pale court stone", "06 Azarah Gates", 0.08)
+        label(room_name, nicanor_room_x, room_y, threshold + 10.2, 1.1)
+
+    # Contents make the two Nicanor chambers legible at close range.
+    for rack_y in (COURT_CENTER_Y + 10.5, COURT_CENTER_Y + 15.5):
+        beam_between("מתלה בגדי כהונה",
+                     (nicanor_room_x + 2.0, rack_y, threshold + 1.0),
+                     (nicanor_room_x + 2.0, rack_y, threshold + 7.0),
+                     0.11, "Cedar", "06 Azarah Gates", 12)
+        for hook_z in (2.4, 4.2, 6.0):
+            box("בגד כהונה מקופל", (0.6, 1.5, 0.25),
+                (nicanor_room_x + 1.7, rack_y, threshold + hook_z),
+                "Curtain", "06 Azarah Gates", 0.05)
+    box("שולחן הכנת חביתין", (4.5, 2.2, 0.35),
+        (nicanor_room_x + 1.0, COURT_CENTER_Y - 13.0, threshold + 2.4),
+        "Cedar", "06 Azarah Gates", 0.08)
+    for leg_x in (-0.5, 2.5):
+        for leg_y in (-0.75, 0.75):
+            cylinder("רגל שולחן החביתין", 0.10, 2.2,
+                     (nicanor_room_x + leg_x,
+                      COURT_CENTER_Y - 13.0 + leg_y, threshold + 1.1),
+                     "Cedar", "06 Azarah Gates", 10)
+    cylinder("מחבת החביתין", 1.15, 0.22,
+             (nicanor_room_x + 1.0, COURT_CENTER_Y - 13.0,
+              threshold + 2.72), "Bronze", "06 Azarah Gates", 32)
+
+    # The gate's eastern threshold served as the standing place for several
+    # purification rites. A restrained stone strip identifies that zone
+    # without presenting an unsourced permanent installation as fact.
+    box("מעמד הטהרה בפתח שער ניקנור", (4.0, 8.0, 0.22),
+        (AZARAH_EAST_X - 3.8, COURT_CENTER_Y, threshold + 0.12),
+        "Assumed element", "06 Azarah Gates", 0.05)
+
+    # The House of the Hearth was a large domed building with four inner
+    # chambers. The open colonnade below preserves sight through its gate.
+    hearth_x = gate_xs[0]
+    hearth_y = COURT_NORTH_Y + 9.0
+    for dx in (-8.0, 8.0):
+        for dy in (-5.0, 5.0):
+            cylinder("בית המוקד – עמוד", 0.55, 12.0,
+                     (hearth_x + dx, hearth_y + dy, threshold + 6.0),
+                     "Jerusalem limestone", "06 Azarah Gates", 20)
+    sphere("בית המוקד – כיפה", 11.5,
+           (hearth_x, hearth_y, threshold + 12.2),
+           "Assumed element", "06 Azarah Gates",
+           scale=(1.0, 0.78, 0.34), subdivisions=3)
+    for dx in (-6.2, 6.2):
+        for dy in (-3.8, 3.8):
+            box("בית המוקד – אחת מארבע הלשכות", (6.0, 4.5, 5.0),
+                (hearth_x + dx, hearth_y + dy, threshold + 2.5),
+                "Assumed element", "06 Azarah Gates", 0.12)
+    cylinder("בית המוקד – מדורת הכוהנים", 2.1, 0.45,
+             (hearth_x, hearth_y, threshold + 0.25),
+             "Bronze", "06 Azarah Gates", 32)
+    for ember_index in range(7):
+        angle = 2 * math.pi * ember_index / 7
+        sphere("בית המוקד – גחלת", 0.34,
+               (hearth_x + 1.25 * math.cos(angle),
+                hearth_y + 1.25 * math.sin(angle), threshold + 0.65),
+               "Ember", "06 Azarah Gates", subdivisions=1)
+    label("בית המוקד – כיפה וארבע לשכות", hearth_x, hearth_y,
+          threshold + 16.5, 1.25)
+
+    # Gate-specific cues: water channel, animal tethers, fuel racks and the
+    # sacrificial-animal approach. They are didactic, not measured remains.
+    beam_between("שער המים – אמת מים",
+                 (gate_xs[0] - 5.0, COURT_SOUTH_Y + 3.0, threshold + 0.8),
+                 (gate_xs[0] + 5.0, COURT_SOUTH_Y + 3.0, threshold + 0.8),
+                 0.22, "Bronze", "06 Azarah Gates", 16)
+    for tether_x, side_y in (
+        (gate_xs[1] - 3.0, COURT_SOUTH_Y + 3.0),
+        (gate_xs[1] + 3.0, COURT_SOUTH_Y + 3.0),
+        (gate_xs[1] - 3.0, COURT_NORTH_Y - 3.0),
+        (gate_xs[1] + 3.0, COURT_NORTH_Y - 3.0),
+    ):
+        cylinder("עמוד קשירת קרבן", 0.22, 3.2,
+                 (tether_x, side_y, threshold + 1.6),
+                 "Bronze", "06 Azarah Gates", 14)
+        torus("טבעת קשירה", 0.34, 0.07,
+              (tether_x, side_y, threshold + 2.4),
+              "Bronze", "06 Azarah Gates")
+    for rack_x in (gate_xs[2] - 3.0, gate_xs[2], gate_xs[2] + 3.0):
+        beam_between("שער הדלק – עצי מערכה",
+                     (rack_x - 1.8, COURT_SOUTH_Y + 2.8, threshold + 0.5),
+                     (rack_x + 1.8, COURT_SOUTH_Y + 2.8, threshold + 4.6),
+                     0.28, "Cedar", "06 Azarah Gates", 12)
+
+    # Six chambers along the court walls. Their width and exact east-west
+    # positions are unspecified in Middot and therefore remain schematic.
+    chamber_specs = (
+        (-1, 79.0, 18.0, "לשכת המלח"),
+        (-1, 134.0, 18.0, "לשכת הפרווה"),
+        (-1, 190.0, 18.0, "לשכת המדיחין"),
+        (1, 79.0, 18.0, "לשכת העץ"),
+        (1, 134.0, 18.0, "לשכת הגולה"),
+        (1, 190.0, 18.0, "לשכת הגזית"),
+    )
+    chamber_centers: dict[str, tuple[float, float]] = {}
+    for side, chamber_x, chamber_w, chamber_name in chamber_specs:
+        center_y, _ = add_chamber_shell(
+            chamber_name, chamber_x, side, chamber_w, threshold
+        )
+        chamber_centers[chamber_name] = (chamber_x, center_y)
+
+    group = "06 Azarah Chambers"
+    salt_x, salt_y = chamber_centers["לשכת המלח"]
+    for dx in (-4.5, -1.5, 1.5, 4.5):
+        box("לשכת המלח – תא אחסון", (2.3, 3.0, 2.2),
+            (salt_x + dx, salt_y, threshold + 1.1),
+            "White altar stone", group, 0.10)
+        cone("לשכת המלח – ערמת מלח", 0.9, 1.2,
+             (salt_x + dx, salt_y, threshold + 2.8),
+             "White altar stone", group, 18)
+
+    parvah_x, parvah_y = chamber_centers["לשכת הפרווה"]
+    for dx in (-3.5, 3.5):
+        box("לשכת הפרווה – שולחן מליחה", (5.0, 1.7, 0.35),
+            (parvah_x + dx, parvah_y, threshold + 2.3),
+            "Pale court stone", group, 0.06)
+        for leg in (-1.7, 1.7):
+            cylinder("לשכת הפרווה – רגל שולחן", 0.10, 2.1,
+                     (parvah_x + dx + leg, parvah_y,
+                      threshold + 1.05), "Pale court stone", group, 10)
+    bath_z = threshold + ASSUMED["azarah_chamber_height"] + 0.8
+    box("בית הטבילה על גג לשכת הפרווה – אגן", (7.5, 5.5, 1.2),
+        (parvah_x, parvah_y - 2.5, bath_z),
+        "Pale court stone", group, 0.12)
+    box("בית הטבילה על גג לשכת הפרווה – מים", (6.2, 4.2, 0.18),
+        (parvah_x, parvah_y - 2.5, bath_z + 0.68),
+        "Water", group, 0.04)
+
+    rinse_x, rinse_y = chamber_centers["לשכת המדיחין"]
+    box("לשכת המדיחין – אגן רחיצה", (8.0, 3.0, 1.5),
+        (rinse_x, rinse_y, threshold + 0.75),
+        "Pale court stone", group, 0.10)
+    box("לשכת המדיחין – מים", (7.0, 2.2, 0.18),
+        (rinse_x, rinse_y, threshold + 1.56), "Water", group, 0.04)
+    for stair in range(7):
+        box("המסיבה מלשכת המדיחין לגג הפרווה",
+            (2.2, 1.1 + stair * 0.72, 0.5),
+            (rinse_x - 6.0, rinse_y - 3.5 + stair * 0.36,
+             threshold + stair * 1.7 + 0.25),
+            "Assumed element", group, 0.05)
+
+    wood_x, wood_y = chamber_centers["לשכת העץ"]
+    for rack in (-4.5, 0.0, 4.5):
+        for shelf_z in (1.5, 4.0, 6.5):
+            box("לשכת העץ – מדף ארז", (3.5, 1.0, 0.28),
+                (wood_x + rack, wood_y, threshold + shelf_z),
+                "Cedar", group, 0.04)
+
+    golah_x, golah_y = chamber_centers["לשכת הגולה"]
+    cylinder("לשכת הגולה – בור הגולה", 2.5, 1.1,
+             (golah_x, golah_y, threshold + 0.55),
+             "Jerusalem limestone", group, 32)
+    torus("לשכת הגולה – שפת הבור", 2.5, 0.24,
+          (golah_x, golah_y, threshold + 1.15),
+          "Bronze", group)
+    beam_between("לשכת הגולה – קורת הגלגל",
+                 (golah_x - 3.5, golah_y, threshold + 5.5),
+                 (golah_x + 3.5, golah_y, threshold + 5.5),
+                 0.22, "Cedar", group, 14)
+    for post_x in (-3.5, 3.5):
+        beam_between("לשכת הגולה – עמוד הגלגל",
+                     (golah_x + post_x, golah_y, threshold + 0.8),
+                     (golah_x + post_x, golah_y, threshold + 5.5),
+                     0.22, "Cedar", group, 14)
+    torus("לשכת הגולה – גלגל", 1.25, 0.16,
+          (golah_x, golah_y - 0.2, threshold + 4.0),
+          "Bronze", group, rotation=(math.pi / 2, 0, 0))
+
+    gazit_x, gazit_y = chamber_centers["לשכת הגזית"]
+    for row_y in (-2.8, 0.0, 2.8):
+        box("לשכת הגזית – ספסל הסנהדרין", (12.0, 1.0, 1.1),
+            (gazit_x, gazit_y + row_y, threshold + 0.55),
+            "Cedar", group, 0.10)
+    box("לשכת הגזית – שולחן בית הדין", (5.0, 2.2, 0.35),
+        (gazit_x, gazit_y - 4.3, threshold + 2.2),
+        "Cedar", group, 0.08)
 
 
 def build_altar_and_service_area() -> None:
@@ -878,16 +1656,16 @@ def build_altar_and_service_area() -> None:
     # L-shape rather than the full 32 x 32 block shown by the earlier model.
     box("יסוד המזבח – צפון 32×1", (32, 1, 1),
         (altar_center_x, altar_center_y + 15.5, z + 0.5),
-        "White altar stone", group, 0.05)
+        "Altar shadow stone", group, 0.10)
     box("יסוד המזבח – מערב 1×31", (1, 31, 1),
         (altar_center_x + 15.5, altar_center_y - 0.5, z + 0.5),
-        "White altar stone", group, 0.05)
+        "Altar shadow stone", group, 0.10)
     box("גוף המזבח עד הסובב 30×30", (30, 30, 6),
         (altar_center_x, altar_center_y, z + 3.0),
-        "White altar stone", group, 0.06)
+        "Altar limestone", group, 0.12)
     box("ראש המזבח מעל הסובב 28×28", (28, 28, 3),
         (altar_center_x, altar_center_y, z + 7.5),
-        "White altar stone", group, 0.06)
+        "Altar upper stone", group, 0.12)
     # A thin contrasting inset makes the one-cubit priestly walkway and the
     # 24 x 24 fire area readable without changing the sourced dimensions.
     box("מקום הילוך רגלי הכוהנים", (26, 26, 0.08),
@@ -909,22 +1687,22 @@ def build_altar_and_service_area() -> None:
             box("Altar horn", (1, 1, ASSUMED["altar_horn_height"]),
                 (altar_center_x + dx, altar_center_y + dy,
                  z + ASSUMED["altar_height"] + 0.5),
-                "White altar stone", group, 0.05)
+                "Altar upper stone", group, 0.10)
 
     # 32 cubits is the sloped length. With a nine-cubit rise its ground run is
     # about 30.7 cubits, conventionally rounded to 30 in schematic plans.
     ramp_run = math.sqrt(SOURCE["altar_ramp"][1] ** 2 - ASSUMED["altar_height"] ** 2)
     ramp_wedge("כבש המזבח 32×16", altar_center_x,
                altar_center_y - 16 - ramp_run, altar_center_y - 16,
-               16, z, ASSUMED["altar_height"], group)
+               16, z, ASSUMED["altar_height"], group, "Altar limestone")
     # Two narrow subsidiary ramps give access to the foundation and the
     # surrounding ledge. Their exact attachment geometry is interpretive.
     ramp_wedge("כבש קטן ליסוד", altar_center_x + 9.2,
                altar_center_y - 21, altar_center_y - 16,
-               2.0, z, 1.0, group)
+               2.0, z, 1.0, group, "Altar shadow stone")
     ramp_wedge("כבש קטן לסובב", altar_center_x - 9.2,
                altar_center_y - 36, altar_center_y - 16,
-               2.0, z, 6.0, group)
+               2.0, z, 6.0, group, "Altar upper stone")
 
     # Three daily wood arrangements and the central ash heap (the "apple").
     arrangements = (
@@ -1472,6 +2250,22 @@ def setup_world_and_camera() -> None:
     fill.data.size = m(180)
     move_to_collection(fill, "11 Lighting and Camera")
 
+    # A soft local fill prevents the altar's east/south faces from collapsing
+    # into near-black while preserving the ledge shadows that reveal its form.
+    bpy.ops.object.light_add(type="AREA", location=scene_location((40, 36, 42)))
+    altar_fill = bpy.context.object
+    altar_fill.name = "תאורת מילוי רכה למזבח"
+    altar_fill.data.name = altar_fill.name
+    altar_fill.data.energy = 520
+    altar_fill.data.color = (1.0, 0.88, 0.70)
+    altar_fill.data.shape = "DISK"
+    altar_fill.data.size = m(24)
+    altar_target = Vector(scene_location((61, 71, 22)))
+    altar_fill.rotation_euler = (
+        altar_target - altar_fill.location
+    ).to_track_quat("-Z", "Y").to_euler()
+    move_to_collection(altar_fill, "11 Lighting and Camera")
+
     bpy.ops.object.camera_add(location=scene_location((-390, -420, 360)))
     camera = bpy.context.object
     camera.name = "מצלמת מבט כללי"
@@ -1509,7 +2303,8 @@ def build_model() -> None:
         "00 Labels", "01 Temple Mount", "02 Mount Walls and Gates",
         "03 Soreg and Cheil (interpreted footprint)", "04 Women's Court",
         "04 Women's Court Chambers", "05 Fifteen Curved Steps",
-        "06 Azarah", "07 Altar and Service Area", "08 Hall Steps",
+        "06 Azarah", "06 Azarah Gates", "06 Azarah Chambers",
+        "07 Altar and Service Area", "08 Hall Steps",
         "09 Sanctuary", "10 Chambers (schematic)",
         "11 Lighting and Camera",
     ):
@@ -1518,6 +2313,7 @@ def build_model() -> None:
     build_soreg()
     build_womens_court()
     build_azarah()
+    build_azarah_gates_and_chambers()
     build_altar_and_service_area()
     build_sanctuary()
     add_compass_and_scale()

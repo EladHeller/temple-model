@@ -558,7 +558,7 @@
       </div>
 
       <div class="header-actions">
-        <a class="icon-button" id="download-model" href="temple_middot.glb?v=7" download title="הורדת הדגם" aria-label="הורדת הדגם">
+        <a class="icon-button" id="download-model" href="temple_middot.glb?v=10" download title="הורדת הדגם" aria-label="הורדת הדגם">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M4 20h16"/></svg>
         </a>
         <button class="icon-button" id="fullscreen-header" type="button" title="מסך מלא" aria-label="מסך מלא">
@@ -586,8 +586,8 @@
       <main class="stage" id="stage">
         <model-viewer
           id="temple-viewer"
-          src="temple_middot.glb?v=7"
-          poster="temple_middot_preview.png?v=7"
+          src="temple_middot.glb?v=10"
+          poster="temple_middot_preview.png?v=10"
           alt="דגם תלת־ממדי של בית המקדש לפי מסכת מידות"
           camera-controls
           auto-rotate
@@ -658,8 +658,8 @@
   <script type="module">
     const catalog = {
       exterior: {
-        src: 'temple_middot.glb?v=7',
-        poster: 'temple_middot_preview.png?v=7',
+        src: 'temple_middot.glb?v=10',
+        poster: 'temple_middot_preview.png?v=10',
         alt: 'דגם חוץ תלת־ממדי של בית המקדש לפי מסכת מידות',
         kicker: 'מבט אדריכלי',
         title: 'מתחם הר הבית',
@@ -667,8 +667,9 @@
         items: [
           { title: 'הר הבית', short: 'המתחם החיצוני', kicker: 'מסכת מידות ב, א', description: 'הר הבית מוצג כריבוע הגדול המקיף את מערכת העזרות. מיקום העזרות בתוכו הוא השלמה פרשנית בהתאם לתיאור רובו מן הדרום, שני לו מן המזרח.', measurement: '500×500 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.2.1', orbit: '38deg 62deg auto' },
           { title: 'הסורג והחיל', short: 'גבול הקדושה והמעלות', kicker: 'מסכת מידות ב, ג', description: 'הסורג הנמוך מקיף את החיל. בדגם הוא מודגש ברצועה כחולה־אפורה כדי להבדיל בין מידה מפורשת לבין פרשנות גאומטרית.', measurement: 'סורג: 10 טפחים · 12 מעלות', source: 'https://www.sefaria.org/Mishnah_Middot.2.3', orbit: '20deg 68deg auto' },
-          { title: 'עזרת הנשים', short: 'הלשכות והמעלות', kicker: 'מסכת מידות ב, ה', description: 'עזרה ריבועית ובה ארבע לשכות פתוחות בפינות וחמש־עשרה מעלות מעוגלות המובילות מערבה אל שער ניקנור.', measurement: '135×135 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.2.5', orbit: '-8deg 58deg auto' },
+          { title: 'עזרת הנשים', short: 'ארבע לשכות מפורטות והמעלות', kicker: 'מסכת מידות ב, ה; נגעים יד, ח', description: 'עזרה ריבועית ובה ארבע לשכות פינה לא־מקורות. בלשכת הנזירים נראים דודי השלמים, מוקדי האש ומקום הגילוח; בדיר העצים ערמות ממוינות, שולחן בדיקה ועצים מתולעים; בלשכת המצורעים מקווה בעל מעלות; ובבית שמניה מדפים, קנקני יין ושמן וכלי מזיגה. הפתחים, הריצוף, הניקוז והריהוט הם שחזור לימודי סכמטי. חמש־עשרה המעלות המעוגלות מובילות מערבה אל שער ניקנור.', measurement: 'עזרה: 135×135 · כל לשכה: 40×40 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.2.5', orbit: '-8deg 58deg auto' },
           { title: 'עזרת ישראל והכוהנים', short: 'מפלסי העבודה', kicker: 'מסכת מידות ב, ו', description: 'שתי רצועות רצופות בעומק אחת־עשרה אמה כל אחת. המפלסים והמעלות מבהירים את העלייה ההדרגתית לכיוון מערב.', measurement: '11 + 11 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.2.6', orbit: '-28deg 60deg auto' },
+          { title: 'שערי ולשכות העזרה', short: 'בתי־שער, דלתות ומבני שירות', kicker: 'מסכת מידות א, ד–ו; ה, ג–ד', description: 'שבעת השערים מוצגים כבתי־שער בנויים: בדרום שערי המים, הבכורות והדלק; בצפון בית המוקד, הקרבן והניצוץ; ובמזרח שער העזרה הראשי — שער ניקנור — בעל דלתות הנחושת ושתי לשכותיו. הוא ניצב בראש חמש־עשרה המעלות, בין עזרת הנשים לעזרת ישראל, ואין לבלבל בינו לבין הפתח המזרחי הנפרד של עזרת הנשים. לאורך החומות נוספו גם שש לשכות העזרה ומתקניהן. רוחב וגובה פתחי העזרה מקוריים; מידות בתי־השער ומיקומי הלשכות סכמטיים.', measurement: '7 שערים · ניקנור: שער העזרה המזרחי · 8 לשכות', source: 'https://www.sefaria.org/Mishnah_Middot.1.4', orbit: '-42deg 54deg auto' },
           { title: 'מזבח העולה', short: 'הכבש ובית המטבחיים', kicker: 'מסכת מידות ג, א–ג', description: 'יסוד המזבח מקיף את הצפון והמערב, ומעליו הגוף, הסובב, חוט הסיקרא וראש המזבח. על הגג נראים מסלול הכוהנים, שלוש המערכות, התפוח ושני ספלי הניסוך; מדרום הכבש הראשי ושני הכבשים הקטנים.', measurement: 'מזבח: 32×32 · מערכה: 24×24 · כבש: 32×16 אמה', source: 'https://he.wikipedia.org/wiki/מזבח_העולה', orbit: '-52deg 56deg auto' },
           { title: 'האולם וההיכל', short: 'החזית, התאים והגג', kicker: 'מסכת מידות ג, ז; ד, א–ז', description: 'חזית האולם כוללת פתח 20×40 ופרוכת, נדבכי אבן ואומנות. בפנים נוספו קורות ארז, שרשרות ועטרות, גפן הזהב, נברשת ושני שולחנות; סביב ההיכל מוצגים 38 תאים, המסיבה, חלונות, מעקה וכליא עורב.', measurement: '100×100×100 אמה · 38 תאים', source: 'https://he.wikipedia.org/wiki/אולם_(בית_המקדש)', orbit: '-86deg 67deg auto' }
         ]
