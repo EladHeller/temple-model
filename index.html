@@ -3,10 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0; url=viewer.html">
-  <title>בית המקדש לפי מסכת מידות</title>
+  <meta name="theme-color" content="#15120e">
+  <meta name="description" content="דגמים לימודיים תלת־ממדיים של המשכן במדבר ובית המקדש">
+  <title>המשכן והמקדש — דגמים תלת־ממדיים</title>
+  <style>
+    :root { color-scheme: dark; font-family: Arial, "Noto Sans Hebrew", sans-serif; }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh; margin: 0; display: grid; place-items: center;
+      color: #f7f1e3; background: radial-gradient(circle at 50% 0, #3b3020, #100e0b 58%);
+    }
+    main { width: min(980px, calc(100% - 32px)); padding: 48px 0; }
+    header { max-width: 680px; margin: 0 auto 34px; text-align: center; }
+    .eyebrow { color: #d6af62; font-size: 12px; font-weight: 700; letter-spacing: .15em; }
+    h1 { margin: 10px 0; font: 500 clamp(34px, 6vw, 64px)/1.05 Georgia, serif; }
+    header p { margin: 0; color: #b9b09f; line-height: 1.7; }
+    .models { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .model-card {
+      min-height: 310px; display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 28px; overflow: hidden; position: relative; border: 1px solid rgba(238,217,176,.18);
+      border-radius: 20px; color: inherit; text-decoration: none; background-position: center;
+      background-size: cover; box-shadow: 0 22px 60px rgba(0,0,0,.35); isolation: isolate;
+      transition: transform .2s ease, border-color .2s ease;
+    }
+    .model-card::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(transparent 20%, rgba(10,8,5,.92)); }
+    .model-card:hover { transform: translateY(-4px); border-color: rgba(214,175,98,.65); }
+    .mishkan { background-image: url("tabernacle/tabernacle_preview.png"); }
+    .temple { background-image: url("temple/temple_middot_preview.png"); }
+    .model-card small { color: #e2bd72; font-weight: 700; }
+    .model-card h2 { margin: 8px 0 6px; font: 500 30px/1.1 Georgia, serif; }
+    .model-card p { margin: 0; color: #d1c8b7; line-height: 1.55; }
+    @media (max-width: 680px) { .models { grid-template-columns: 1fr; } .model-card { min-height: 250px; } }
+  </style>
 </head>
 <body>
-  <p><a href="viewer.html">פתיחת אפליקציית בית המקדש</a></p>
+  <main>
+    <header>
+      <div class="eyebrow">מסע אדריכלי במקורות</div>
+      <h1>המשכן והמקדש</h1>
+      <p>שני דגמים לימודיים נפרדים בקנה מידה עקבי, עם חתכי פנים, כלי הקודש וקישורים למקורות.</p>
+    </header>
+    <section class="models" aria-label="בחירת דגם">
+      <a class="model-card mishkan" href="tabernacle/viewer.html">
+        <small>ספר שמות · שיטת חז״ל</small>
+        <h2>המשכן במדבר</h2>
+        <p>חצר המשכן, היריעות והקרשים, המזבח, הכיור וכלי הקודש.</p>
+      </a>
+      <a class="model-card temple" href="temple/viewer.html">
+        <small>מסכת מידות</small>
+        <h2>בית המקדש</h2>
+        <p>הר הבית, העזרות, המזבח, ההיכל וחתך פנים מפורט.</p>
+      </a>
+    </section>
+  </main>
 </body>
 </html>

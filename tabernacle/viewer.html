@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14110d">
+  <meta name="description" content="אפליקציה אינטראקטיבית לצפייה במשכן במדבר לפי ספר שמות ושיטת חז״ל">
+  <title>המשכן במדבר — דגם לימודי</title>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f0d0a;
+      --panel: #191610;
+      --panel-soft: #211d16;
+      --ink: #f7f1e3;
+      --muted: #aaa293;
+      --gold: #d6af62;
+      --gold-light: #f1d18f;
+      --line: rgba(238, 217, 176, .14);
+      --danger: #ff9d87;
+      --header-h: 72px;
+      font-family: Arial, "Noto Sans Hebrew", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    button, a { font: inherit; }
+
+    button:focus-visible, a:focus-visible {
+      outline: 2px solid var(--gold-light);
+      outline-offset: 3px;
+    }
+
+    .app {
+      height: 100%;
+      display: grid;
+      grid-template-rows: var(--header-h) minmax(0, 1fr);
+      background: var(--bg);
+    }
+
+    .app-header {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-width: 0;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(20, 17, 13, .96);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .2);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid rgba(214, 175, 98, .38);
+      border-radius: 12px;
+      color: var(--gold-light);
+      background: linear-gradient(145deg, rgba(214, 175, 98, .16), rgba(214, 175, 98, .03));
+    }
+
+    .brand-mark svg { width: 24px; height: 24px; }
+
+    .brand-copy { min-width: 0; }
+
+    .brand-copy h1 {
+      margin: 0;
+      overflow: hidden;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(18px, 2vw, 25px);
+      font-weight: 500;
+      letter-spacing: -.02em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .brand-copy p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .08em;
+    }
+
+    .view-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #0e0c09;
+    }
+
+    .view-tab {
+      min-width: 110px;
+      height: 40px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      transition: color .16s ease, background .16s ease, box-shadow .16s ease;
+    }
+
+    .view-tab:hover { color: var(--ink); }
+
+    .view-tab[aria-selected="true"] {
+      color: #1b150b;
+      background: linear-gradient(135deg, var(--gold-light), var(--gold));
+      box-shadow: 0 5px 18px rgba(214, 175, 98, .18);
+    }
+
+    .header-actions { display: flex; gap: 8px; }
+
+    .icon-button, .tool-button, .mobile-menu {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: rgba(255, 255, 255, .025);
+      cursor: pointer;
+    }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+    }
+
+    .icon-button:hover, .tool-button:hover, .mobile-menu:hover {
+      border-color: rgba(214, 175, 98, .45);
+      color: var(--gold-light);
+      background: rgba(214, 175, 98, .08);
+    }
+
+    svg.icon {
+      width: 19px;
+      height: 19px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 318px minmax(0, 1fr);
+      direction: rtl;
+    }
+
+    .explorer {
+      position: relative;
+      z-index: 12;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--line);
+      background:
+        linear-gradient(rgba(25, 22, 16, .97), rgba(18, 16, 12, .99)),
+        radial-gradient(circle at 20% 10%, rgba(214, 175, 98, .12), transparent 38%);
+    }
+
+    .explorer-head {
+      padding: 22px 20px 15px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .explorer-head h2 {
+      margin: 7px 0 4px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 23px;
+      font-weight: 500;
+    }
+
+    .explorer-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .place-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(214, 175, 98, .35) transparent;
+    }
+
+    .place-button {
+      width: 100%;
+      min-height: 64px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) 18px;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 11px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      color: var(--muted);
+      text-align: right;
+      background: transparent;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+
+    .place-button:hover {
+      color: var(--ink);
+      background: rgba(255, 255, 255, .035);
+    }
+
+    .place-button[aria-current="true"] {
+      border-color: rgba(214, 175, 98, .24);
+      color: var(--ink);
+      background: linear-gradient(90deg, rgba(214, 175, 98, .12), rgba(214, 175, 98, .035));
+    }
+
+    .place-number {
+      width: 31px;
+      height: 31px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--gold);
+      font: 12px Georgia, serif;
+    }
+
+    .place-button[aria-current="true"] .place-number {
+      border-color: var(--gold);
+      color: #1a1409;
+      background: var(--gold);
+    }
+
+    .place-copy strong {
+      display: block;
+      margin-bottom: 3px;
+      color: inherit;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .place-copy small { color: #898275; font-size: 10px; }
+    .place-arrow { color: #70695e; font-size: 19px; transform: rotate(180deg); }
+
+    .explorer-foot {
+      padding: 13px 15px;
+      border-top: 1px solid var(--line);
+      color: #857d70;
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    .stage {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      direction: rtl;
+      background:
+        radial-gradient(circle at 45% 32%, #59616a 0, #313842 36%, #171b21 74%, #0d0f12 100%);
+    }
+
+    model-viewer {
+      width: 100%;
+      height: 100%;
+      --poster-color: transparent;
+      --progress-bar-height: 0;
+      outline: 0;
+    }
+
+    .stage::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(7, 7, 7, .23), transparent 25%, transparent 75%, rgba(7, 7, 7, .11));
+    }
+
+    .stage-top {
+      position: absolute;
+      z-index: 5;
+      inset: 18px 18px auto 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .status-chip, .scale-chip {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 999px;
+      color: #e8e2d8;
+      background: rgba(16, 17, 19, .68);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+      backdrop-filter: blur(13px);
+      -webkit-backdrop-filter: blur(13px);
+      font-size: 11px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold-light);
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .info-card {
+      position: absolute;
+      z-index: 6;
+      right: 20px;
+      bottom: 20px;
+      width: min(410px, calc(100% - 150px));
+      padding: 18px 19px 17px;
+      border: 1px solid rgba(238, 217, 176, .18);
+      border-radius: 16px;
+      background: rgba(20, 18, 14, .88);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, .28);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .info-card[hidden] { display: none; }
+
+    .info-card > .eyebrow,
+    .info-card > h3 { padding-left: 44px; }
+
+    .info-close {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid rgba(238, 217, 176, .2);
+      border-radius: 10px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, .035);
+      font-size: 23px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .info-close:hover {
+      border-color: rgba(214, 175, 98, .48);
+      color: var(--gold-light);
+      background: rgba(214, 175, 98, .09);
+    }
+
+    .info-card h3 {
+      margin: 5px 0 7px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 23px;
+      font-weight: 500;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: #c0b9ad;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .info-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 13px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .measurement {
+      color: var(--gold-light);
+      font-size: 11px;
+    }
+
+    .source-link {
+      color: #beb5a5;
+      font-size: 11px;
+      text-underline-offset: 3px;
+    }
+
+    .source-link:hover { color: var(--gold-light); }
+
+    .tool-dock {
+      position: absolute;
+      z-index: 7;
+      left: 20px;
+      bottom: 20px;
+      display: flex;
+      gap: 7px;
+      padding: 6px;
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 14px;
+      background: rgba(16, 17, 19, .76);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, .22);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .tool-button {
+      min-width: 42px;
+      height: 40px;
+      padding: 0 11px;
+      border-radius: 9px;
+      font-size: 11px;
+    }
+
+    .tool-button[aria-pressed="true"] {
+      border-color: rgba(214, 175, 98, .45);
+      color: var(--gold-light);
+      background: rgba(214, 175, 98, .11);
+    }
+
+    .loading-layer {
+      position: absolute;
+      z-index: 10;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      opacity: 1;
+      background: rgba(13, 15, 18, .34);
+      transition: opacity .35s ease;
+    }
+
+    .loading-layer.is-hidden { opacity: 0; }
+
+    .loading-box {
+      width: min(300px, calc(100% - 48px));
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(17, 15, 12, .86);
+      box-shadow: 0 15px 45px rgba(0, 0, 0, .3);
+      text-align: center;
+      backdrop-filter: blur(14px);
+    }
+
+    .loading-box strong { display: block; margin-bottom: 11px; font-size: 13px; }
+    .progress-track { height: 3px; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, .1); }
+    .progress-bar { width: 100%; height: 100%; transform: scaleX(0); transform-origin: right; background: linear-gradient(90deg, #987338, var(--gold-light)); }
+
+    .error-message {
+      display: none;
+      position: absolute;
+      z-index: 15;
+      inset: 50% auto auto 50%;
+      width: min(430px, calc(100% - 40px));
+      padding: 22px;
+      border: 1px solid rgba(255, 157, 135, .35);
+      border-radius: 15px;
+      color: #f2d8d1;
+      background: rgba(40, 22, 19, .94);
+      transform: translate(-50%, -50%);
+      text-align: center;
+      line-height: 1.65;
+    }
+
+    .error-message strong { display: block; color: var(--danger); }
+    .mobile-menu { display: none; height: 40px; padding: 0 12px; border-radius: 10px; }
+    .scrim { display: none; }
+
+    @media (max-width: 940px) {
+      .workspace { grid-template-columns: 275px minmax(0, 1fr); }
+      .info-card { width: min(370px, calc(100% - 140px)); }
+      .tool-button span { display: none; }
+    }
+
+    @media (max-width: 760px) {
+      :root { --header-h: 64px; }
+      .app-header { padding: 0 12px; gap: 8px; }
+      .brand-mark { width: 38px; height: 38px; }
+      .brand-copy p { display: none; }
+      .brand-copy h1 { max-width: 175px; font-size: 17px; }
+      .view-tab { min-width: 64px; height: 36px; padding: 0 10px; font-size: 12px; }
+      .header-actions { display: none; }
+      .mobile-menu { display: inline-flex; }
+      .workspace { display: block; position: relative; }
+      .explorer {
+        position: absolute;
+        z-index: 30;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(325px, calc(100% - 42px));
+        transform: translateX(105%);
+        transition: transform .25s ease;
+        box-shadow: -20px 0 60px rgba(0, 0, 0, .42);
+      }
+      .app.nav-open .explorer { transform: translateX(0); }
+      .scrim {
+        position: absolute;
+        z-index: 29;
+        inset: 0;
+        border: 0;
+        background: rgba(0, 0, 0, .58);
+      }
+      .app.nav-open .scrim { display: block; }
+      .stage { width: 100%; height: 100%; }
+      .scale-chip { display: none; }
+      .info-card { right: 12px; bottom: 68px; width: calc(100% - 24px); padding: 14px 15px; }
+      .info-card h3 { font-size: 20px; }
+      .info-card p { line-height: 1.55; }
+      .tool-dock { right: 12px; left: 12px; bottom: 10px; justify-content: center; }
+      .tool-button { flex: 1; }
+      .stage-top { inset: 12px 12px auto 12px; }
+    }
+
+    @media (max-width: 430px) {
+      .brand-mark { display: none; }
+      .brand-copy h1 { max-width: 126px; font-size: 15px; }
+      .view-tabs { margin-right: auto; }
+      .view-tab { min-width: 57px; padding: 0 7px; }
+      .info-meta { align-items: flex-start; flex-direction: column; gap: 6px; }
+      .info-card { bottom: 66px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 20h16M6 20V9h12v11M4 9h16L12 3 4 9Z"/><path d="M9 20v-6h6v6"/></svg>
+        </div>
+        <div class="brand-copy">
+          <h1>המשכן במדבר</h1>
+          <p>ספר שמות · שחזור לפי שיטת חז״ל</p>
+        </div>
+      </div>
+
+      <div class="view-tabs" role="tablist" aria-label="בחירת דגם">
+        <button class="view-tab" id="tab-exterior" type="button" role="tab" aria-selected="true" data-model="exterior">דגם חוץ</button>
+        <button class="view-tab" id="tab-interior" type="button" role="tab" aria-selected="false" data-model="interior">פנים</button>
+      </div>
+
+      <div class="header-actions">
+        <a class="icon-button" id="download-model" href="tabernacle.glb?v=1" download title="הורדת הדגם" aria-label="הורדת הדגם">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M4 20h16"/></svg>
+        </a>
+        <button class="icon-button" id="fullscreen-header" type="button" title="מסך מלא" aria-label="מסך מלא">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+        </button>
+      </div>
+
+      <button class="mobile-menu" id="mobile-menu" type="button" aria-expanded="false" aria-controls="explorer">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        מפת הדגם
+      </button>
+    </header>
+
+    <div class="workspace">
+      <aside class="explorer" id="explorer" aria-label="מפת הדגם">
+        <div class="explorer-head">
+          <div class="eyebrow" id="section-kicker">מבט אדריכלי</div>
+          <h2 id="section-title">חצר המשכן</h2>
+          <p id="section-description">בחרו אזור כדי לקרוא עליו ולשנות את זווית התצוגה.</p>
+        </div>
+        <nav class="place-list" id="place-list" aria-label="אזורים בדגם"></nav>
+        <div class="explorer-foot">השחזור הוא כלי לימודי. פרטים שאינם מוכרעים במקורות מוצגים באופן סכמטי.</div>
+      </aside>
+
+      <main class="stage" id="stage">
+        <model-viewer
+          id="temple-viewer"
+          src="tabernacle.glb?v=1"
+          poster="tabernacle_preview.png?v=1"
+          alt="דגם תלת־ממדי של המשכן במדבר וחצרו"
+          camera-controls
+          auto-rotate
+          auto-rotate-delay="2200"
+          rotation-per-second="4deg"
+          camera-orbit="38deg 62deg auto"
+          min-camera-orbit="auto 10deg 2%"
+          max-camera-orbit="auto 89deg auto"
+          field-of-view="30deg"
+          min-field-of-view="2deg"
+          max-field-of-view="62deg"
+          environment-image="neutral"
+          exposure="1.05"
+          shadow-intensity="1.1"
+          shadow-softness=".85"
+          tone-mapping="commerce"
+          touch-action="pan-y"
+          ar
+          ar-modes="webxr scene-viewer quick-look">
+        </model-viewer>
+
+        <div class="stage-top" aria-live="polite">
+          <div class="status-chip"><span class="status-dot" id="status-dot"></span><span id="status-text">טוען את הדגם…</span></div>
+          <div class="scale-chip">קנה מידה: אמה = 0.5 מטר</div>
+        </div>
+
+        <article class="info-card" id="info-card" aria-live="polite" aria-labelledby="info-title">
+          <button class="info-close" id="info-close" type="button" aria-label="סגירת תיבת המידע" title="סגירת תיבת המידע">×</button>
+          <div class="eyebrow" id="info-kicker">שמות כז, ט–יח</div>
+          <h3 id="info-title">חצר המשכן</h3>
+          <p id="info-description"></p>
+          <div class="info-meta">
+            <span class="measurement" id="info-measurement"></span>
+            <a class="source-link" id="info-source" href="https://www.sefaria.org/Exodus.27.9-18?lang=he" target="_blank" rel="noreferrer">למקור ↗</a>
+          </div>
+        </article>
+
+        <div class="tool-dock" aria-label="כלי תצוגה">
+          <button class="tool-button" id="reset-camera" type="button" title="איפוס המצלמה">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M4.8 8A8 8 0 1 1 4 15"/><path d="M4.8 3.5V8h4.5"/></svg><span>איפוס</span>
+          </button>
+          <button class="tool-button" id="toggle-spin" type="button" aria-pressed="true" title="הפעלה או עצירה של הסיבוב">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.7"/><path d="M20 4v4.7h-4.7"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.3"/></svg><span>סיבוב</span>
+          </button>
+          <button class="tool-button" id="fullscreen-dock" type="button" title="מסך מלא">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg><span>מסך מלא</span>
+          </button>
+        </div>
+
+        <div class="loading-layer" id="loading-layer" aria-hidden="true">
+          <div class="loading-box">
+            <strong>מכין את הדגם התלת־ממדי…</strong>
+            <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+          </div>
+        </div>
+
+        <div class="error-message" id="error-message" role="alert">
+          <strong>לא ניתן לטעון את הדגם</strong>
+          הפעילו שרת מקומי בתיקיית הפרויקט ובדקו שיש חיבור לאינטרנט לטעינת רכיב התצוגה.
+        </div>
+      </main>
+
+      <button class="scrim" id="scrim" type="button" aria-label="סגירת מפת הדגם"></button>
+    </div>
+  </div>
+
+  <noscript><div class="error-message" style="display:block">יש להפעיל JavaScript כדי להשתמש באפליקציה.</div></noscript>
+
+  <script type="module">
+    const catalog = {
+      exterior: {
+        src: 'tabernacle.glb?v=1',
+        poster: 'tabernacle_preview.png?v=1',
+        alt: 'דגם תלת־ממדי של חצר המשכן והמשכן במדבר',
+        kicker: 'מבט חוץ',
+        title: 'חצר המשכן ואוהל מועד',
+        description: 'מן השער במזרח, דרך המזבח והכיור, אל משכן פתוח וכלי הקודש במערב.',
+        items: [
+          { title: 'חצר המשכן', short: 'קלעי שש, עמודים ושער מזרחי', kicker: 'שמות כז, ט–יח', description: 'החצר המלבנית מוקפת קלעי שש בגובה חמש אמות. עשרים עמודים בכל צד אורך, עשרה במערב, ובמזרח מסך רקום ברוחב עשרים אמה. פריסת הקלעים סביב העמודים מוצגת לפי ברייתא דמלאכת המשכן.', measurement: '100×50 אמה · גובה 5 אמות', source: 'https://www.sefaria.org/Exodus.27.9-18?lang=he', orbit: '38deg 62deg auto' },
+          { title: 'מזבח העולה', short: 'מזבח אדמה בגוף עצי שיטים ונחושת', kicker: 'שמות כז, א–ח; ויקיפדיה — מזבח העולה', description: 'גוף המזבח חלול אך מלא אדמה בזמן החניה. סביבו רשת נחושת ברוחב אמה עד קו חצי הגובה, בתחתיתו יסוד בולט, ובארבע פינותיו קרנות שהן חלק מגוף המזבח. נוספו טבעות ובדים לנשיאה, מערכת עצים ואש תמיד. הכבש והבלטת היסוד מוצגים במידות סכמטיות משום שהערך אינו נותן להם מידות במשכן.', measurement: 'גוף המזבח: 5×5×3 אמות', source: 'https://he.wikipedia.org/wiki/מזבח_העולה#במשכן', orbit: '18deg 58deg auto' },
+          { title: 'כיור הנחושת', short: 'בין המזבח ובין פתח האוהל', kicker: 'שמות ל, יח–כא', description: 'הכיור וכנו ניצבים בין מזבח העולה לפתח אוהל מועד. התורה אינה מוסרת את מידותיהם, ולכן גודלם וצורת הקערה בדגם סכמטיים.', measurement: 'מידות אינן מפורשות', source: 'https://www.sefaria.org/Exodus.30.18-21?lang=he', orbit: '-5deg 61deg auto' },
+          { title: 'קרשי המשכן', short: 'קרשים, אדני כסף ובריחים', kicker: 'שמות כו, טו–ל; שבת צח ע״ב', description: 'עשרים קרשים בכל צד ושישה במערב, עם שני קרשי מקצוע. כל קרש ברוחב אמה וחצי ובגובה עשר אמות. בדגם נבחר עובי קבוע של אמה כדעת רבי נחמיה; החיבורים בפינות מסומנים כהשלמה פרשנית.', measurement: '30×10×10 אמות · קרש 1.5×1×10', source: 'https://he.wikipedia.org/wiki/המשכן#שיטת_חז״ל_והפרשנות_המסורתית', orbit: '-28deg 60deg auto' },
+          { title: 'המשכן הפתוח וכליו', short: 'ללא יריעות הכיסוי', kicker: 'שמות כה–כו; ל', description: 'לפי בחירת התצוגה, יריעות הגג והמכסים הוסרו ודופן הדרום הונמכה כדי לחשוף את הכלים במקומם: מזבח הקטורת, השולחן והמנורה בקודש, וארון העדות מעבר לפרוכת.', measurement: 'חלוקה מסורתית: 20 + 10 אמות', source: 'https://he.wikipedia.org/wiki/המשכן#שיטת_חז״ל_והפרשנות_המסורתית', orbit: '-48deg 56deg auto' },
+          { title: 'מיקום המשכן בחצר', short: 'לפי השחזור המסורתי', kicker: 'ברייתא דמלאכת המשכן', description: 'המשכן מוצב במערב החצר: עשרים אמה מן הקלעים בצפון, בדרום ובמערב, וחמישים אמה של חצר פתוחה במזרח. מיקום זה אינו מפורש בתורה ומוצג לפי שיטת חז״ל המסוכמת בערך המשכן.', measurement: '50 אמה במזרח · 20 בשאר הצדדים', source: 'https://he.wikipedia.org/wiki/המשכן#מקומו_בחצר', orbit: '-72deg 64deg auto' }
+        ]
+      },
+      interior: {
+        src: 'tabernacle_interior.glb?v=1',
+        poster: 'tabernacle_interior_preview.png?v=1',
+        alt: 'חתך תלת־ממדי של פנים המשכן וכלי הקודש',
+        kicker: 'חתך פנים',
+        title: 'הקודש, הפרוכת וקודש הקודשים',
+        description: 'חתך פתוח מן המסך במזרח אל ארון העדות במערב, לפי חלוקת חז״ל.',
+        items: [
+          { title: 'הקודש וקודש הקודשים', short: 'חלוקה של שני שלישים ושליש', kicker: 'שמות כו, לג; שיטת חז״ל', description: 'הפרוכת מוצבת עשרים אמה מן הפתח ומבדילה בין הקודש שבמזרח לקודש הקודשים שבמערב. חלוקת 20+10 אמות היא השחזור המסורתי; גג וקרשי הדרום הוסרו בחתך לצורכי תצוגה.', measurement: 'קודש 20 אמה · קודש הקודשים 10 אמות', source: 'https://he.wikipedia.org/wiki/המשכן#שיטת_חז״ל_והפרשנות_המסורתית', orbit: '60deg 67deg auto' },
+          { title: 'מזבח הקטורת', short: 'במרכז הקודש', kicker: 'שמות ל, א–י', description: 'מזבח עצי שיטים מצופה זהב, בעל ארבע קרנות ושני בדים. לפי שיטת חז״ל הוא מוצב באמצע הקודש, עשר אמות מן הפתח ועשר מן הפרוכת.', measurement: '1×1×2 אמות', source: 'https://www.sefaria.org/Exodus.30.1-10?lang=he', orbit: '38deg 66deg auto' },
+          { title: 'שולחן הפנים', short: 'בצפון הקודש', kicker: 'שמות כה, כג–ל; ויקיפדיה — שולחן הפנים', description: 'שולחן עצי שיטים מצופה זהב, ובו מסגרת בגובה טפח ושני זרי זהב, ארבע טבעות ושני בדים. עליו שתי מערכות של שישה לחמים בצורת „תיבה פרוצה”, ארבעה סניפים, 28 קני זהב ושני בזיכי לבונה. בדגם נבחרה הדעה שהמסגרת מעל הטבלה, סניפים ישרים ובזיכים בתוך הלחם העליון; הערך מביא גם דעות אחרות.', measurement: '2×1×1.5 אמות · 12 לחמים · 28 קנים', source: 'https://he.wikipedia.org/wiki/שולחן_הפנים', orbit: '16deg 62deg auto' },
+          { title: 'המנורה', short: 'בדרום הקודש', kicker: 'שמות כה, לא–מ', description: 'מנורה בעלת קנה מרכזי ושלושה זוגות קנים ושבעה נרות. התורה אינה מוסרת מידה כללית; הגובה והקימור בדגם הם המחשה מסורתית סכמטית.', measurement: '7 נרות · הגובה אינו מפורש בשמות', source: 'https://www.sefaria.org/Exodus.25.31-40?lang=he', orbit: '-12deg 60deg auto' },
+          { title: 'הפרוכת', short: 'ארבעה עמודים ואדני כסף', kicker: 'שמות כו, לא–לד', description: 'הפרוכת עשויה תכלת, ארגמן, תולעת שני ושש משזר, ותלויה על ארבעה עמודי שיטים מצופים זהב. בדגם היא מוצגת כיריעת בד שלמה, בעלת רקע כחול־ארגמני ודמויות כרובים רקומות. גוון הרקע והדגם הם שחזור אמנותי משוער.', measurement: '4 עמודים · גובה לפי קרשי המשכן', source: 'https://www.sefaria.org/Exodus.26.31-34?lang=he', orbit: '-40deg 64deg auto' },
+          { title: 'ארון העדות והכפורת', short: 'בקודש הקודשים', kicker: 'שמות כה, י–כב', description: 'הארון מצופה זהב ובדיו בטבעותיו. מעליו כפורת ושני כרובים מקשה אחת; דמות הכרובים והכנפיים בדגם סכמטית, משום שהפסוקים אינם מגדירים את צורתם או מידתם.', measurement: 'ארון 2.5×1.5×1.5 אמות', source: 'https://www.sefaria.org/Exodus.25.10-22?lang=he', orbit: '-70deg 64deg auto' },
+          { title: 'מסך פתח האוהל', short: 'חמישה עמודים ואדני נחושת', kicker: 'שמות כו, לו–לז', description: 'מסך רקום סוגר את הפתח המזרחי ונתלה על חמישה עמודים מצופי זהב, שבניגוד לעמודי הפרוכת עומדים על אדני נחושת. בדגם נבחר רקע כחול־ארגמני ועליו דגם מעוינים צבעוני; הגוון והדגם הם שחזור אמנותי משוער.', measurement: '5 עמודים · אדני נחושת', source: 'https://www.sefaria.org/Exodus.26.36-37?lang=he', orbit: '-88deg 67deg auto' }
+        ]
+      }
+    };
+
+    const app = document.querySelector('#app');
+    const viewer = document.querySelector('#temple-viewer');
+    const stage = document.querySelector('#stage');
+    const placeList = document.querySelector('#place-list');
+    const loadingLayer = document.querySelector('#loading-layer');
+    const progressBar = document.querySelector('#progress-bar');
+    const statusText = document.querySelector('#status-text');
+    const statusDot = document.querySelector('#status-dot');
+    const errorMessage = document.querySelector('#error-message');
+    const spinButton = document.querySelector('#toggle-spin');
+    const mobileMenu = document.querySelector('#mobile-menu');
+    const downloadModel = document.querySelector('#download-model');
+    const infoCard = document.querySelector('#info-card');
+    const infoClose = document.querySelector('#info-close');
+    let activeModel = 'exterior';
+    let activeItem = 0;
+
+    function renderCatalog() {
+      const section = catalog[activeModel];
+      document.querySelector('#section-kicker').textContent = section.kicker;
+      document.querySelector('#section-title').textContent = section.title;
+      document.querySelector('#section-description').textContent = section.description;
+      placeList.innerHTML = section.items.map((item, index) => `
+        <button class="place-button" type="button" data-index="${index}" aria-current="${index === activeItem}">
+          <span class="place-number">${String(index + 1).padStart(2, '0')}</span>
+          <span class="place-copy"><strong>${item.title}</strong><small>${item.short}</small></span>
+          <span class="place-arrow" aria-hidden="true">‹</span>
+        </button>`).join('');
+      showItem(activeItem, false);
+    }
+
+    function showItem(index, moveCamera = true) {
+      activeItem = index;
+      const item = catalog[activeModel].items[index];
+      infoCard.hidden = false;
+      placeList.querySelectorAll('.place-button').forEach((button, buttonIndex) => {
+        button.setAttribute('aria-current', String(buttonIndex === index));
+      });
+      document.querySelector('#info-kicker').textContent = item.kicker;
+      document.querySelector('#info-title').textContent = item.title;
+      document.querySelector('#info-description').textContent = item.description;
+      document.querySelector('#info-measurement').textContent = item.measurement;
+      document.querySelector('#info-source').href = item.source;
+      if (moveCamera) {
+        viewer.cameraOrbit = item.orbit;
+        viewer.cameraTarget = 'auto auto auto';
+        viewer.fieldOfView = '30deg';
+        viewer.jumpCameraToGoal();
+      }
+    }
+
+    function switchModel(name) {
+      if (name === activeModel) return;
+      activeModel = name;
+      activeItem = 0;
+      const section = catalog[name];
+      document.querySelectorAll('.view-tab').forEach(tab => {
+        tab.setAttribute('aria-selected', String(tab.dataset.model === name));
+      });
+      loadingLayer.classList.remove('is-hidden');
+      progressBar.style.transform = 'scaleX(0)';
+      errorMessage.style.display = 'none';
+      statusText.textContent = 'טוען את הדגם…';
+      statusDot.style.background = '';
+      viewer.poster = section.poster;
+      viewer.alt = section.alt;
+      viewer.src = section.src;
+      downloadModel.href = section.src;
+      viewer.cameraOrbit = section.items[0].orbit;
+      viewer.cameraTarget = 'auto auto auto';
+      renderCatalog();
+    }
+
+    function closeMobileNavigation() {
+      app.classList.remove('nav-open');
+      mobileMenu.setAttribute('aria-expanded', 'false');
+    }
+
+    async function toggleFullscreen() {
+      if (!document.fullscreenElement) await stage.requestFullscreen();
+      else await document.exitFullscreen();
+    }
+
+    document.querySelectorAll('.view-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchModel(tab.dataset.model));
+    });
+
+    placeList.addEventListener('click', event => {
+      const button = event.target.closest('.place-button');
+      if (!button) return;
+      showItem(Number(button.dataset.index));
+      closeMobileNavigation();
+    });
+
+    viewer.addEventListener('progress', event => {
+      progressBar.style.transform = `scaleX(${event.detail.totalProgress})`;
+    });
+
+    viewer.addEventListener('load', () => {
+      statusText.textContent = 'הדגם מוכן';
+      progressBar.style.transform = 'scaleX(1)';
+      window.setTimeout(() => loadingLayer.classList.add('is-hidden'), 220);
+    });
+
+    viewer.addEventListener('error', () => {
+      statusText.textContent = 'שגיאה בטעינה';
+      statusDot.style.background = 'var(--danger)';
+      loadingLayer.classList.add('is-hidden');
+      errorMessage.style.display = 'block';
+    });
+
+    document.querySelector('#reset-camera').addEventListener('click', () => {
+      viewer.cameraOrbit = catalog[activeModel].items[0].orbit;
+      viewer.cameraTarget = 'auto auto auto';
+      viewer.fieldOfView = '30deg';
+      viewer.jumpCameraToGoal();
+    });
+
+    spinButton.addEventListener('click', () => {
+      const spinning = viewer.hasAttribute('auto-rotate');
+      viewer.toggleAttribute('auto-rotate', !spinning);
+      spinButton.setAttribute('aria-pressed', String(!spinning));
+    });
+
+    document.querySelector('#fullscreen-header').addEventListener('click', toggleFullscreen);
+    document.querySelector('#fullscreen-dock').addEventListener('click', toggleFullscreen);
+
+    mobileMenu.addEventListener('click', () => {
+      const open = app.classList.toggle('nav-open');
+      mobileMenu.setAttribute('aria-expanded', String(open));
+    });
+    document.querySelector('#scrim').addEventListener('click', closeMobileNavigation);
+    infoClose.addEventListener('click', () => {
+      infoCard.hidden = true;
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      const label = document.fullscreenElement ? 'יציאה ממסך מלא' : 'מסך מלא';
+      document.querySelector('#fullscreen-header').setAttribute('aria-label', label);
+      document.querySelector('#fullscreen-dock').title = label;
+    });
+
+    window.addEventListener('keydown', event => {
+      if (event.key === '1') switchModel('exterior');
+      if (event.key === '2') switchModel('interior');
+      if (event.key.toLowerCase() === 'r') document.querySelector('#reset-camera').click();
+      if (event.code === 'Space' && !event.repeat) {
+        event.preventDefault();
+        spinButton.click();
+      }
+      if (event.key === 'Escape') {
+        closeMobileNavigation();
+        infoCard.hidden = true;
+      }
+    });
+
+    window.setTimeout(() => {
+      if (!customElements.get('model-viewer')) {
+        loadingLayer.classList.add('is-hidden');
+        errorMessage.style.display = 'block';
+        statusText.textContent = 'רכיב התצוגה לא נטען';
+      }
+    }, 10000);
+
+    renderCatalog();
+  </script>
+</body>
+</html>

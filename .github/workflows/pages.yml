@@ -1,4 +1,4 @@
-name: Deploy static Temple viewer to GitHub Pages
+name: Deploy Tabernacle and Temple viewers to GitHub Pages
 
 on:
   push:
@@ -33,16 +33,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _site
-          cp viewer.html _site/index.html
-          cp viewer.html _site/viewer.html
-          cp temple_middot.glb _site/
-          cp temple_middot_interior.glb _site/
-          cp temple_middot_preview.png _site/
-          cp temple_middot_interior_preview.png _site/
+          mkdir -p _site/temple _site/tabernacle
+          cp index.html _site/index.html
+          cp temple/viewer.html _site/temple/
+          cp temple/temple_middot.glb _site/temple/
+          cp temple/temple_middot_interior.glb _site/temple/
+          cp temple/temple_middot_preview.png _site/temple/
+          cp temple/temple_middot_interior_preview.png _site/temple/
+          cp tabernacle/viewer.html _site/tabernacle/
+          cp tabernacle/tabernacle.glb _site/tabernacle/
+          cp tabernacle/tabernacle_interior.glb _site/tabernacle/
+          cp tabernacle/tabernacle_preview.png _site/tabernacle/
+          cp tabernacle/tabernacle_interior_preview.png _site/tabernacle/
           test -s _site/index.html
-          test -s _site/temple_middot.glb
-          test -s _site/temple_middot_interior.glb
+          test -s _site/temple/temple_middot.glb
+          test -s _site/tabernacle/tabernacle.glb
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
