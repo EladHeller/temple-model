@@ -558,7 +558,7 @@
       </div>
 
       <div class="header-actions">
-        <a class="icon-button" id="download-model" href="temple_middot.glb?v=6" download title="הורדת הדגם" aria-label="הורדת הדגם">
+        <a class="icon-button" id="download-model" href="temple_middot.glb?v=7" download title="הורדת הדגם" aria-label="הורדת הדגם">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M4 20h16"/></svg>
         </a>
         <button class="icon-button" id="fullscreen-header" type="button" title="מסך מלא" aria-label="מסך מלא">
@@ -586,8 +586,8 @@
       <main class="stage" id="stage">
         <model-viewer
           id="temple-viewer"
-          src="temple_middot.glb?v=6"
-          poster="temple_middot_preview.png?v=6"
+          src="temple_middot.glb?v=7"
+          poster="temple_middot_preview.png?v=7"
           alt="דגם תלת־ממדי של בית המקדש לפי מסכת מידות"
           camera-controls
           auto-rotate
@@ -658,8 +658,8 @@
   <script type="module">
     const catalog = {
       exterior: {
-        src: 'temple_middot.glb?v=6',
-        poster: 'temple_middot_preview.png?v=6',
+        src: 'temple_middot.glb?v=7',
+        poster: 'temple_middot_preview.png?v=7',
         alt: 'דגם חוץ תלת־ממדי של בית המקדש לפי מסכת מידות',
         kicker: 'מבט אדריכלי',
         title: 'מתחם הר הבית',
@@ -669,21 +669,22 @@
           { title: 'הסורג והחיל', short: 'גבול הקדושה והמעלות', kicker: 'מסכת מידות ב, ג', description: 'הסורג הנמוך מקיף את החיל. בדגם הוא מודגש ברצועה כחולה־אפורה כדי להבדיל בין מידה מפורשת לבין פרשנות גאומטרית.', measurement: 'סורג: 10 טפחים · 12 מעלות', source: 'https://www.sefaria.org/Mishnah_Middot.2.3', orbit: '20deg 68deg auto' },
           { title: 'עזרת הנשים', short: 'הלשכות והמעלות', kicker: 'מסכת מידות ב, ה', description: 'עזרה ריבועית ובה ארבע לשכות פתוחות בפינות וחמש־עשרה מעלות מעוגלות המובילות מערבה אל שער ניקנור.', measurement: '135×135 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.2.5', orbit: '-8deg 58deg auto' },
           { title: 'עזרת ישראל והכוהנים', short: 'מפלסי העבודה', kicker: 'מסכת מידות ב, ו', description: 'שתי רצועות רצופות בעומק אחת־עשרה אמה כל אחת. המפלסים והמעלות מבהירים את העלייה ההדרגתית לכיוון מערב.', measurement: '11 + 11 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.2.6', orbit: '-28deg 60deg auto' },
-          { title: 'מזבח העולה', short: 'הכבש ובית המטבחיים', kicker: 'מסכת מידות ג, א–ג', description: 'המזבח בנוי בשלוש מדרגות נפח, מוקף חוט סיקרא ובעל ארבע קרנות. מדרום לו הכבש, ומצפון טבעות השחיטה, השולחנות והעמודים.', measurement: 'מזבח: 32×32 · כבש: 32×16 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.3', orbit: '-52deg 56deg auto' },
-          { title: 'האולם וההיכל', short: 'המבנה המערבי', kicker: 'מסכת מידות ד, ו–ז', description: 'הגוש הגבוה במערב מייצג את האולם, ההיכל והתאים הסובבים. פרטי החזית והחלוקה החיצונית מוצגים באופן לימודי וסכמטי.', measurement: '100×100×100 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.4.6', orbit: '-86deg 67deg auto' }
+          { title: 'מזבח העולה', short: 'הכבש ובית המטבחיים', kicker: 'מסכת מידות ג, א–ג', description: 'יסוד המזבח מקיף את הצפון והמערב, ומעליו הגוף, הסובב, חוט הסיקרא וראש המזבח. על הגג נראים מסלול הכוהנים, שלוש המערכות, התפוח ושני ספלי הניסוך; מדרום הכבש הראשי ושני הכבשים הקטנים.', measurement: 'מזבח: 32×32 · מערכה: 24×24 · כבש: 32×16 אמה', source: 'https://he.wikipedia.org/wiki/מזבח_העולה', orbit: '-52deg 56deg auto' },
+          { title: 'האולם וההיכל', short: 'החזית, התאים והגג', kicker: 'מסכת מידות ג, ז; ד, א–ז', description: 'חזית האולם כוללת פתח 20×40 ופרוכת, נדבכי אבן ואומנות. בפנים נוספו קורות ארז, שרשרות ועטרות, גפן הזהב, נברשת ושני שולחנות; סביב ההיכל מוצגים 38 תאים, המסיבה, חלונות, מעקה וכליא עורב.', measurement: '100×100×100 אמה · 38 תאים', source: 'https://he.wikipedia.org/wiki/אולם_(בית_המקדש)', orbit: '-86deg 67deg auto' }
         ]
       },
       interior: {
-        src: 'temple_middot_interior.glb?v=6',
-        poster: 'temple_middot_interior_preview.png?v=6',
-        alt: 'חתך תלת־ממדי של פנים ההיכל וכלי הקודש',
+        src: 'temple_middot_interior.glb?v=7',
+        poster: 'temple_middot_interior_preview.png?v=7',
+        alt: 'חתך תלת־ממדי של האולם, פנים ההיכל וכלי הקודש',
         kicker: 'חתך פנים',
-        title: 'ההיכל וכלי הקודש',
-        description: 'חתך פתוח של הקודש וקודש הקודשים בבית השני.',
+        title: 'האולם, ההיכל וכלי הקודש',
+        description: 'חתך פתוח מן האולם דרך הקודש ועד קודש הקודשים בבית השני.',
         items: [
+          { title: 'האולם', short: 'פרוכת, גפן ועטרות', kicker: 'מסכת מידות ג, ז', description: 'החתך כולל את שתים־עשרה המעלות, פרוכת הפתח הגבוהה, קורות הארז, שרשרות הזהב והעטרות, שני שולחנות, גפן הזהב ונברשת הילני המלכה.', measurement: 'עומק פנימי: 11 אמה · פתח: 20×40 אמה', source: 'https://he.wikipedia.org/wiki/אולם_(בית_המקדש)', orbit: '60deg 67deg auto' },
           { title: 'חלל הקודש', short: 'החלל המזרחי', kicker: 'מסכת מידות ד, ז', description: 'הקודש מוצג כחלל פתוח לצפייה. הקיר הדרומי והגג הונמכו או הוסרו כדי לאפשר לראות את הכלים במקומם.', measurement: '40×20 אמה', source: 'https://www.sefaria.org/Mishnah_Middot.4.7', orbit: '38deg 66deg auto' },
           { title: 'מזבח הזהב', short: 'מזבח הקטורת', kicker: 'שמות ל, ב', description: 'מזבח קטן מצופה זהב, בעל ארבע קרנות וזר סביב שפתו. הוא ניצב בחלקו המזרחי של הקודש.', measurement: '1×1×2 אמות', source: 'https://www.sefaria.org/Exodus.30.2', orbit: '18deg 68deg auto' },
-          { title: 'שולחן לחם הפנים', short: 'בצפון הקודש', kicker: 'שמות כה, כג', description: 'השולחן מוצג בצפון הקודש ועליו שתי מערכות סכמטיות של שישה לחמים. פרטי הקערות והקשות אינם ממודלים בשלב זה.', measurement: '2×1×1.5 אמות · 12 לחמים', source: 'https://www.sefaria.org/Exodus.25.23', orbit: '-6deg 62deg auto' },
+          { title: 'שולחן לחם הפנים', short: 'בצפון הקודש', kicker: 'שמות כה, כג', description: 'השולחן מוצג בצפון הקודש ועליו שתי מערכות של שישה לחמים, קשות ומנקיות לתמיכה, קערה וכף לבונה וזר זהב סביב שפתו.', measurement: '2×1×1.5 אמות · 12 לחמים', source: 'https://www.sefaria.org/Exodus.25.23', orbit: '-6deg 62deg auto' },
           { title: 'המנורה', short: 'בדרום הקודש', kicker: 'מנחות כח ע״ב', description: 'מנורה בעלת שבעה נרות, קנה מרכזי ושלושה זוגות קנים. הגובה מבוסס על שמונה־עשר טפחים; רוחב הקנים וצורתם סכמטיים.', measurement: 'גובה: 18 טפחים · 7 נרות', source: 'https://www.sefaria.org/Menachot.28b', orbit: '-28deg 60deg auto' },
           { title: 'אמה טרקסין והפרוכות', short: 'מסדרון בין שתי פרוכות', kicker: 'משנה יומא ה, א', description: 'שתי פרוכות נתלו בשני צדי רצועת האמה: החיצונית פתוחה מעט בדרום, והפנימית בצפון. כך נוצר ביניהן מסדרון מעבר מדורג מן הקודש אל קודש הקודשים.', measurement: 'רוחב הרצועה: אמה אחת', source: 'https://www.sefaria.org/Mishnah_Yoma.5.1', orbit: '-50deg 64deg auto' },
           { title: 'קודש הקודשים', short: 'אבן השתייה', kicker: 'משנה יומא ה, ב', description: 'בבית השני לא היה ארון. במקומו מוצגת אבן השתייה, ועליה מחתה סכמטית לעבודת יום הכיפורים.', measurement: '20×20 אמה', source: 'https://www.sefaria.org/Mishnah_Yoma.5.2', orbit: '-76deg 65deg auto' }

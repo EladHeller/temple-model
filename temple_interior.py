@@ -122,6 +122,28 @@ def add_curved_branch(
 
 
 def add_cutaway_architecture() -> None:
+    # The cutaway now begins at the Hall: its full 100-cubit width is retained,
+    # while the upper half and south wall remain open for inspection.
+    hall_facade_x = -42.0
+    heikhal_front_x = -26.0
+    base.box("רצפת האולם", (16, 100, 0.5), (-34, 0, -0.25),
+             "Pale court stone", ARCH)
+    base.building_wall_with_gate(
+        "חזית האולם בחתך", -39.5, 0, 100, 5, 46, 0, 20, 40, ARCH
+    )
+    base.box("כותל האולם הצפוני", (16, 5, 46), (-34, -47.5, 23),
+             "Jerusalem limestone", ARCH)
+    base.box("כותל האולם הדרומי – חתך", (16, 2, 2), (-34, 49, 1),
+             "Assumed element", ARCH)
+    for index in range(12):
+        remaining = 12 - index
+        base.box(f"מעלת האולם בחתך {index + 1:02d}",
+                 (remaining, 60, 0.5),
+                 (hall_facade_x - remaining / 2, 0, index * 0.5 + 0.25),
+                 "Pale court stone", ARCH)
+    base.add_hall_facade_details(hall_facade_x, 0, 0, 46, ARCH)
+    base.add_hall_interior_details(hall_facade_x, heikhal_front_x, 0, 0, ARCH)
+
     # Middot 4:7: 40-cubit Holy Place, 1-cubit Traksin, 20-cubit Holy of Holies.
     base.box("רצפת ההיכל", (73, 32, 0.5), (10.5, 0, -0.25),
              "Pale court stone", ARCH)
@@ -138,11 +160,25 @@ def add_cutaway_architecture() -> None:
         "פתח ההיכל", -23, 0, 32, 6, 40, 0, 10, 20, ARCH
     )
 
-    # Gold-plated interior accents, represented as thin bands.
-    base.box("חיפוי זהב צפוני", (61, 0.12, 2.2), (10.5, -9.94, 1.1),
+    # Gold plating on the inner stone walls, divided into readable panels.
+    base.box("חיפוי זהב צפוני", (61, 0.10, 38), (10.5, -9.94, 19),
              "Gold", ARCH)
-    base.box("חיפוי זהב מערבי", (0.12, 20, 2.2), (40.94, 0, 1.1),
+    base.box("חיפוי זהב מערבי", (0.10, 20, 38), (40.94, 0, 19),
              "Gold", ARCH)
+    for panel_x in range(-18, 42, 6):
+        base.box("מסגרת לוח זהב צפוני", (0.12, 0.08, 37),
+                 (panel_x, -9.86, 19), "Bronze", ARCH)
+    for panel_y in range(-8, 9, 4):
+        base.box("מסגרת לוח זהב מערבי", (0.08, 0.12, 37),
+                 (40.86, panel_y, 19), "Bronze", ARCH)
+
+    # Slab joints make the stone floor scale visible in the close-up model.
+    for floor_x in range(-40, 46, 5):
+        base.box("מישק רצפת האבן", (0.08, 30, 0.025),
+                 (floor_x, 0, 0.02), "Grout", ARCH)
+    for floor_y in range(-9, 10, 3):
+        base.box("מישק רצפת האבן", (70, 0.08, 0.025),
+                 (10.5, floor_y, 0.02), "Grout", ARCH)
 
     # Yoma 5:1: two curtains stood on the two sides of the one-cubit Traksin.
     # The outer/eastern curtain opened at the south; the inner/western one
@@ -181,12 +217,27 @@ def add_cutaway_architecture() -> None:
              (inner_x + 0.175, inner_start_y, curtain_height / 2),
              "Curtain", CURTAINS)
 
+    # Narrow woven bands evoke the blue, scarlet and purple threads without
+    # claiming a unique reconstructed pattern.
+    stripe_mats = ("תכלת", "שני", "ארגמן")
+    for curtain_index, (curtain_x, start_y) in enumerate(
+        ((outer_x - 0.075, room_north), (inner_x + 0.075, inner_start_y)), 1
+    ):
+        for stripe_index in range(12):
+            stripe_y = start_y + 0.75 + stripe_index * (curtain_length - 1.5) / 11
+            base.box(f"פס ארוג בפרוכת {curtain_index}-{stripe_index + 1}",
+                     (0.025, 0.28, curtain_height - 1.0),
+                     (curtain_x, stripe_y, curtain_height / 2),
+                     stripe_mats[stripe_index % len(stripe_mats)], CURTAINS)
+
     # Full-width rails emphasize that these are two distinct curtain planes.
     for name, x in (("חיצונית", outer_x), ("פנימית", inner_x)):
         add_between(f"מוט הפרוכת ה{name}", (x, room_north, 38.5),
                     (x, room_south, 38.5), 0.10, "Gold", CURTAINS)
 
     interior_label("הקודש – 40×20 אמה", 0, 0, 0.05, 1.25)
+    interior_label("האולם – 11 אמה", -33.5, 0, 0.05, 1.15)
+    interior_label("פתח האולם 20×40", -45.0, 0, 0.05, 0.85)
     interior_label("אמה טרקסין", 20.5, 0, 0.05, 0.85)
     # Keep the room title north of the foundation stone so the two labels do
     # not overlap in the overhead/web view.
@@ -210,6 +261,16 @@ def add_golden_altar() -> None:
     for xx in (-0.53, 0.53):
         add_between("זר מזבח הזהב", (x + xx, y - 0.53, 2.05),
                     (x + xx, y + 0.53, 2.05), 0.045)
+    base.box("גחלי מזבח הקטורת", (0.72, 0.72, 0.08),
+             (x, y, 2.08), "Ash", VESSELS, 0.08)
+    for coal_x, coal_y in ((-0.22, -0.18), (0.20, -0.08),
+                           (-0.05, 0.18), (0.24, 0.22)):
+        base.sphere("גחל קטורת", 0.10, (x + coal_x, y + coal_y, 2.17),
+                    "Ember", VESSELS, scale=(1.0, 0.8, 0.55), subdivisions=2)
+    for side in (-1, 1):
+        base.torus("טבעת מזבח הזהב", 0.13, 0.035,
+                   (x, y + side * 0.54, 1.55), "Gold", VESSELS,
+                   rotation=(math.pi / 2, 0, 0))
     interior_label("מזבח הזהב", x, y + 1.45, 0.06, 0.7)
 
 
@@ -229,12 +290,33 @@ def add_showbread_table() -> None:
         add_between("זר השולחן", (x + xx, y - 0.54, 1.57),
                     (x + xx, y + 0.54, 1.57), 0.045)
 
+    # Four upright frames and transverse supports represent the qesawot and
+    # menaqqiyyot that supported the two bread stacks.
+    for support_x in (x - 0.92, x + 0.92):
+        for support_y in (y - 0.48, y + 0.48):
+            add_between("קשות השולחן", (support_x, support_y, 1.5),
+                        (support_x, support_y, 2.55), 0.035)
+    for level in range(6):
+        support_z = 1.64 + level * 0.12
+        for stack_x in (x - 0.55, x + 0.55):
+            add_between("מנקיות השולחן", (stack_x - 0.37, y - 0.40, support_z),
+                        (stack_x - 0.37, y + 0.40, support_z), 0.025)
+            add_between("מנקיות השולחן", (stack_x + 0.37, y - 0.40, support_z),
+                        (stack_x + 0.37, y + 0.40, support_z), 0.025)
+
     # Two stacks of six loaves; their detailed curvature is schematic.
     for stack_x in (x - 0.55, x + 0.55):
         for level in range(6):
             base.box("לחם הפנים", (0.72, 0.62, 0.10),
                      (stack_x, y, 1.57 + level * 0.12),
                      "לחם הפנים", VESSELS, 0.035)
+    # Small golden service vessels stand at the ends of the table.
+    for vessel_x, vessel_name in ((x - 0.86, "קערת השולחן"),
+                                  (x + 0.86, "כף לבונה")):
+        base.cylinder(vessel_name, 0.16, 0.08, (vessel_x, y, 1.66),
+                      "Gold", VESSELS, 24)
+        base.torus(f"שפת {vessel_name}", 0.16, 0.025,
+                   (vessel_x, y, 1.71), "Gold", VESSELS)
     interior_label("שולחן לחם הפנים", x, y + 1.45, 0.06, 0.7)
 
 
@@ -252,6 +334,8 @@ def add_menorah() -> None:
     branch_specs = ((0.85, 0.58), (1.15, 1.12), (1.45, 1.66))
     lamp_x_positions = [x]
     for join_z, spread in branch_specs:
+        base.sphere("כפתור המנורה", 0.13, (x, y, join_z),
+                    "Gold", VESSELS, scale=(1, 1, 0.9), subdivisions=2)
         for direction in (-1, 1):
             outer_x = x + direction * spread
             add_curved_branch("קנה המנורה", (x, y, join_z),
@@ -259,10 +343,19 @@ def add_menorah() -> None:
             lamp_x_positions.append(outer_x)
 
     for lamp_x in sorted(lamp_x_positions):
+        # Cup, knob and flower below every oil lamp.
+        base.sphere("כפתור קנה המנורה", 0.105,
+                    (lamp_x, y, 2.82), "Gold", VESSELS,
+                    scale=(1.1, 1.1, 0.8), subdivisions=2)
+        base.cylinder("גביע המנורה", 0.12, 0.13,
+                      (lamp_x, y, 2.94), "Gold", VESSELS, 24)
         base.cylinder("נר המנורה", 0.16, 0.10, (lamp_x, y, 3.05),
                       "Gold", VESSELS, 32)
         base.box("להבת המנורה", (0.08, 0.08, 0.18),
                  (lamp_x, y, 3.19), "אור הנרות", VESSELS, 0.035)
+    for flower_z in (0.72, 1.45, 2.20):
+        base.sphere("פרח בקנה המרכזי", 0.15, (x, y, flower_z),
+                    "Gold", VESSELS, scale=(1.5, 1.5, 0.45), subdivisions=2)
     interior_label("המנורה", x, y + 1.3, 0.06, 0.7)
 
 
@@ -315,13 +408,13 @@ def setup_interior_camera() -> None:
     fill.rotation_euler = (0, math.radians(-90), 0)
     base.move_to_collection(fill, LIGHTS)
 
-    bpy.ops.object.camera_add(location=(base.m(-30), base.m(40), base.m(27)))
+    bpy.ops.object.camera_add(location=(base.m(-18), base.m(84), base.m(50)))
     camera = bpy.context.object
     camera.name = "מצלמת פנים ההיכל"
     camera.data.name = camera.name
-    target = Vector((base.m(8), 0, base.m(5)))
+    target = Vector((base.m(0), 0, base.m(9)))
     camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
-    camera.data.lens = 48
+    camera.data.lens = 54
     base.move_to_collection(camera, LIGHTS)
 
     scene = bpy.context.scene
@@ -346,6 +439,10 @@ def build_interior() -> None:
     base.material("לחם הפנים", (0.67, 0.35, 0.10, 1), roughness=0.72)
     base.material("אבן השתייה", (0.23, 0.22, 0.20, 1), roughness=0.96)
     base.material("אור הנרות", (1.0, 0.28, 0.025, 1), metallic=0.05, roughness=0.25)
+    base.material("Grout", (0.20, 0.18, 0.15, 1), roughness=0.95)
+    base.material("תכלת", (0.035, 0.22, 0.62, 1), roughness=0.78)
+    base.material("שני", (0.62, 0.025, 0.018, 1), roughness=0.78)
+    base.material("ארגמן", (0.36, 0.025, 0.42, 1), roughness=0.78)
     for name in (ARCH, VESSELS, CURTAINS, LABELS, LIGHTS):
         base.collection(name)
     # Labels created by the shared helper go into its translated label group.

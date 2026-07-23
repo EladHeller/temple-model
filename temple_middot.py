@@ -148,6 +148,12 @@ MATERIAL_NAMES_HE = {
     "Ground": "קרקע",
     "Assumed element": "רכיב פרשני",
     "Text": "טקסט",
+    "Silver": "כסף",
+    "Cedar": "ארז",
+    "Ash": "אפר המזבח",
+    "Ember": "גחלים לוחשות",
+    "Water": "מים",
+    "Wine": "יין",
 }
 
 # Prefix translations keep generated Blender Outliner names readable while
@@ -296,6 +302,16 @@ def add_materials() -> None:
     material("Ground", (0.34, 0.29, 0.19, 1.0), roughness=1.0)
     material("Assumed element", (0.30, 0.47, 0.58, 1.0), roughness=0.65)
     material("Text", (0.08, 0.055, 0.025, 1.0), roughness=0.8)
+    material("Silver", (0.68, 0.72, 0.75, 1.0), metallic=0.9, roughness=0.18)
+    material("Cedar", (0.34, 0.12, 0.025, 1.0), roughness=0.58)
+    material("Ash", (0.12, 0.105, 0.09, 1.0), roughness=1.0)
+    ember = material("Ember", (0.82, 0.075, 0.008, 1.0), roughness=0.42)
+    ember_bsdf = ember.node_tree.nodes.get("Principled BSDF")
+    if "Emission Color" in ember_bsdf.inputs:
+        ember_bsdf.inputs["Emission Color"].default_value = (1.0, 0.055, 0.002, 1.0)
+        ember_bsdf.inputs["Emission Strength"].default_value = 2.2
+    material("Water", (0.08, 0.34, 0.58, 1.0), metallic=0.05, roughness=0.16)
+    material("Wine", (0.34, 0.012, 0.02, 1.0), roughness=0.26)
 
 
 def box(
@@ -335,6 +351,109 @@ def cylinder(
     bpy.ops.mesh.primitive_cylinder_add(
         vertices=vertices,
         radius=m(radius_cubit),
+        depth=m(depth_cubit),
+        location=scene_location(location_cubit),
+    )
+    obj = bpy.context.object
+    obj.name = hebrew_name(name)
+    obj.data.name = obj.name
+    obj.data.materials.append(MATERIALS[mat])
+    move_to_collection(obj, group)
+    return obj
+
+
+def sphere(
+    name: str,
+    radius_cubit: float,
+    location_cubit: tuple[float, float, float],
+    mat: str,
+    group: str,
+    scale: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    subdivisions: int = 2,
+) -> bpy.types.Object:
+    """Create a low-poly rounded detail in cubit space."""
+    bpy.ops.mesh.primitive_ico_sphere_add(
+        subdivisions=subdivisions,
+        radius=m(radius_cubit),
+        location=scene_location(location_cubit),
+    )
+    obj = bpy.context.object
+    obj.name = hebrew_name(name)
+    obj.data.name = obj.name
+    obj.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    obj.data.materials.append(MATERIALS[mat])
+    move_to_collection(obj, group)
+    return obj
+
+
+def beam_between(
+    name: str,
+    start_cubit: tuple[float, float, float],
+    end_cubit: tuple[float, float, float],
+    radius_cubit: float,
+    mat: str,
+    group: str,
+    vertices: int = 16,
+) -> bpy.types.Object:
+    """Create a round beam, rod, chain segment, or pipe between two points."""
+    start = Vector(scene_location(start_cubit))
+    end = Vector(scene_location(end_cubit))
+    direction = end - start
+    bpy.ops.mesh.primitive_cylinder_add(
+        vertices=vertices,
+        radius=m(radius_cubit),
+        depth=direction.length,
+        location=(start + end) / 2,
+    )
+    obj = bpy.context.object
+    obj.name = hebrew_name(name)
+    obj.data.name = obj.name
+    obj.rotation_mode = "QUATERNION"
+    obj.rotation_quaternion = direction.to_track_quat("Z", "Y")
+    obj.data.materials.append(MATERIALS[mat])
+    move_to_collection(obj, group)
+    return obj
+
+
+def torus(
+    name: str,
+    major_radius_cubit: float,
+    minor_radius_cubit: float,
+    location_cubit: tuple[float, float, float],
+    mat: str,
+    group: str,
+    rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+) -> bpy.types.Object:
+    bpy.ops.mesh.primitive_torus_add(
+        major_radius=m(major_radius_cubit),
+        minor_radius=m(minor_radius_cubit),
+        major_segments=24,
+        minor_segments=8,
+        location=scene_location(location_cubit),
+        rotation=rotation,
+    )
+    obj = bpy.context.object
+    obj.name = hebrew_name(name)
+    obj.data.name = obj.name
+    obj.data.materials.append(MATERIALS[mat])
+    move_to_collection(obj, group)
+    return obj
+
+
+def cone(
+    name: str,
+    radius_cubit: float,
+    depth_cubit: float,
+    location_cubit: tuple[float, float, float],
+    mat: str,
+    group: str,
+    vertices: int = 12,
+) -> bpy.types.Object:
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=vertices,
+        radius1=m(radius_cubit),
+        radius2=0.0,
         depth=m(depth_cubit),
         location=scene_location(location_cubit),
     )
@@ -599,6 +718,17 @@ def build_soreg() -> None:
             "Assumed element", group)
         box("Soreg post", (post, post, height), (west, y, height / 2),
             "Assumed element", group)
+    # Two continuous rails turn the posts into the low lattice described by
+    # the term soreg; gate interruptions are schematic in this overview model.
+    for rail_z in (height * 0.42, height * 0.82):
+        box("קורת הסורג הדרומית", (west - east, 0.16, 0.16),
+            ((east + west) / 2, south, rail_z), "Assumed element", group)
+        box("קורת הסורג הצפונית", (west - east, 0.16, 0.16),
+            ((east + west) / 2, north, rail_z), "Assumed element", group)
+        box("קורת הסורג המזרחית", (0.16, north - south, 0.16),
+            (east, (south + north) / 2, rail_z), "Assumed element", group)
+        box("קורת הסורג המערבית", (0.16, north - south, 0.16),
+            (west, (south + north) / 2, rail_z), "Assumed element", group)
 
 
 def frange(start: float, stop: float, step: float):
@@ -647,6 +777,31 @@ def build_womens_court() -> None:
     for name, x, y in rooms:
         open_room(name, x, y, 40, 40, level)
         label(name, x, y, level + 0.2, 1.65)
+
+    # The Second Temple balcony (gezuztra) around the Women's Court is shown
+    # as a narrow timber gallery with a simple balustrade.
+    balcony_z = level + 15.0
+    for side, side_y in (("דרום", COURT_CENTER_Y - width / 2 + 4.0),
+                         ("צפון", COURT_CENTER_Y + width / 2 - 4.0)):
+        box(f"גזוזטרה בעזרת הנשים – {side}", (width - 8, 4, 0.45),
+            (center_x, side_y, balcony_z), "Cedar", "04 Women's Court", 0.06)
+        box(f"מעקה הגזוזטרה – {side}", (width - 8, 0.25, 3.0),
+            (center_x,
+             side_y + (1.8 if side == "דרום" else -1.8),
+             balcony_z + 1.5), "Cedar", "04 Women's Court")
+    for side, side_x in (("מזרח", WOMEN_EAST_X + 4.0),
+                         ("מערב", AZARAH_EAST_X - 4.0)):
+        box(f"גזוזטרה בעזרת הנשים – {side}", (4, width - 8, 0.45),
+            (side_x, COURT_CENTER_Y, balcony_z), "Cedar", "04 Women's Court", 0.06)
+        box(f"מעקה הגזוזטרה – {side}", (0.25, width - 8, 3.0),
+            (side_x + (1.8 if side == "מזרח" else -1.8), COURT_CENTER_Y,
+             balcony_z + 1.5), "Cedar", "04 Women's Court")
+    for support_index, support_y in enumerate(frange(COURT_SOUTH_Y + 8,
+                                                      COURT_NORTH_Y - 8, 16), 1):
+        for support_x in (WOMEN_EAST_X + 4.0, AZARAH_EAST_X - 4.0):
+            cylinder(f"עמוד גזוזטרה {support_index}", 0.22, 15.0,
+                     (support_x, support_y, level + 7.5),
+                     "Cedar", "04 Women's Court", 16)
 
     # Fifteen curved steps: successive stacked half-discs make visible treads.
     for index in range(SOURCE["women_steps"]):
@@ -718,12 +873,28 @@ def build_altar_and_service_area() -> None:
     altar_center_y = COURT_CENTER_Y + ASSUMED["altar_north_offset"]
     group = "07 Altar and Service Area"
 
-    box("יסוד המזבח 32×32", (32, 32, 1),
-        (altar_center_x, altar_center_y, z + 0.5), "White altar stone", group)
-    box("גוף המזבח 30×30", (30, 30, 5),
-        (altar_center_x, altar_center_y, z + 3.5), "White altar stone", group)
-    box("ראש המזבח 28×28", (28, 28, 3),
-        (altar_center_x, altar_center_y, z + 7.5), "White altar stone", group)
+    # Middot 3:1: the one-cubit foundation runs along the north and west,
+    # with only one-cubit returns on the east and south. It is therefore an
+    # L-shape rather than the full 32 x 32 block shown by the earlier model.
+    box("יסוד המזבח – צפון 32×1", (32, 1, 1),
+        (altar_center_x, altar_center_y + 15.5, z + 0.5),
+        "White altar stone", group, 0.05)
+    box("יסוד המזבח – מערב 1×31", (1, 31, 1),
+        (altar_center_x + 15.5, altar_center_y - 0.5, z + 0.5),
+        "White altar stone", group, 0.05)
+    box("גוף המזבח עד הסובב 30×30", (30, 30, 6),
+        (altar_center_x, altar_center_y, z + 3.0),
+        "White altar stone", group, 0.06)
+    box("ראש המזבח מעל הסובב 28×28", (28, 28, 3),
+        (altar_center_x, altar_center_y, z + 7.5),
+        "White altar stone", group, 0.06)
+    # A thin contrasting inset makes the one-cubit priestly walkway and the
+    # 24 x 24 fire area readable without changing the sourced dimensions.
+    box("מקום הילוך רגלי הכוהנים", (26, 26, 0.08),
+        (altar_center_x, altar_center_y, z + 9.04),
+        "Pale court stone", group)
+    box("מקום המערכה 24×24", (24, 24, 0.10),
+        (altar_center_x, altar_center_y, z + 9.10), "Ash", group)
     # The scarlet line circles the altar at half its nine-cubit body height.
     box("חוט הסיקרא – מזרח–מערב", (30.15, 0.12, 0.15),
         (altar_center_x, altar_center_y - 15.06, z + 4.5), "Sikra red", group)
@@ -738,7 +909,7 @@ def build_altar_and_service_area() -> None:
             box("Altar horn", (1, 1, ASSUMED["altar_horn_height"]),
                 (altar_center_x + dx, altar_center_y + dy,
                  z + ASSUMED["altar_height"] + 0.5),
-                "White altar stone", group)
+                "White altar stone", group, 0.05)
 
     # 32 cubits is the sloped length. With a nine-cubit rise its ground run is
     # about 30.7 cubits, conventionally rounded to 30 in schematic plans.
@@ -746,23 +917,59 @@ def build_altar_and_service_area() -> None:
     ramp_wedge("כבש המזבח 32×16", altar_center_x,
                altar_center_y - 16 - ramp_run, altar_center_y - 16,
                16, z, ASSUMED["altar_height"], group)
+    # Two narrow subsidiary ramps give access to the foundation and the
+    # surrounding ledge. Their exact attachment geometry is interpretive.
+    ramp_wedge("כבש קטן ליסוד", altar_center_x + 9.2,
+               altar_center_y - 21, altar_center_y - 16,
+               2.0, z, 1.0, group)
+    ramp_wedge("כבש קטן לסובב", altar_center_x - 9.2,
+               altar_center_y - 36, altar_center_y - 16,
+               2.0, z, 6.0, group)
+
+    # Three daily wood arrangements and the central ash heap (the "apple").
+    arrangements = (
+        (altar_center_x - 6.5, altar_center_y + 4.5, 5.2),
+        (altar_center_x + 5.0, altar_center_y + 4.0, 4.2),
+        (altar_center_x - 1.0, altar_center_y - 5.5, 3.6),
+    )
+    for arrangement_index, (fire_x, fire_y, length) in enumerate(arrangements, 1):
+        for log_index in range(5):
+            offset = (log_index - 2) * 0.48
+            beam_between(
+                f"מערכה {arrangement_index} – גזיר עץ {log_index + 1}",
+                (fire_x - length / 2, fire_y + offset, z + 9.32 + 0.10 * (log_index % 2)),
+                (fire_x + length / 2, fire_y + offset, z + 9.32 + 0.10 * (log_index % 2)),
+                0.16, "Cedar", group, 12,
+            )
+        sphere(f"גחלים במערכה {arrangement_index}", 1.25,
+               (fire_x, fire_y, z + 9.48), "Ember", group,
+               (1.65, 0.72, 0.22), 2)
+    sphere("התפוח – ערמת דשן", 2.0,
+           (altar_center_x + 2.0, altar_center_y - 1.0, z + 9.42),
+           "Ash", group, (1.25, 1.0, 0.32), 3)
+
+    # Two silver libation bowls beside the south-west horn, with visible
+    # wine/water surfaces and the openings leading to the shittin below.
+    cup_x = altar_center_x + 11.2
+    for cup_index, (cup_y, liquid) in enumerate(
+        ((altar_center_y - 11.5, "Wine"), (altar_center_y - 9.8, "Water")), 1
+    ):
+        cylinder(f"ספל ניסוך {cup_index}", 0.48, 0.42,
+                 (cup_x, cup_y, z + 9.31), "Silver", group, 32)
+        cylinder(f"תכולת ספל ניסוך {cup_index}", 0.38, 0.025,
+                 (cup_x, cup_y, z + 9.535), liquid, group, 32)
+        cylinder(f"נקב השיתין {cup_index}", 0.10, 0.05,
+                 (cup_x, cup_y, z + 9.56), "Dark opening", group, 20)
 
     # Twenty-four slaughter rings, six rows of four north of the altar.
     ring_origin_x = altar_center_x - 6
     ring_origin_y = altar_center_y + 24
     for row in range(6):
         for column in range(4):
-            bpy.ops.mesh.primitive_torus_add(
-                major_radius=m(0.55), minor_radius=m(0.10),
-                major_segments=20, minor_segments=8,
-                location=scene_location((ring_origin_x + column * 4,
-                                         ring_origin_y + row * 4, z + 0.12)),
-            )
-            obj = bpy.context.object
-            obj.name = f"טבעת שחיטה {row * 4 + column + 1:02d}"
-            obj.data.name = obj.name
-            obj.data.materials.append(MATERIALS["Bronze"])
-            move_to_collection(obj, group)
+            torus(f"טבעת שחיטה {row * 4 + column + 1:02d}", 0.55, 0.10,
+                  (ring_origin_x + column * 4,
+                   ring_origin_y + row * 4, z + 0.12),
+                  "Bronze", group)
 
     # Eight short pillars and four marble tables. Their exact internal spacing
     # is not supplied, so the compact two-row arrangement remains schematic.
@@ -776,15 +983,52 @@ def build_altar_and_service_area() -> None:
     for column in range(4):
         box(f"Marble table {column + 1}", (4, 1.5, 1.2),
             (altar_center_x - 12 + column * 8, altar_center_y + 47, z + 0.6),
-            "White altar stone", group)
+            "White altar stone", group, 0.10)
+
+    # The service-tool table beside the altar: shovel, rake and bronze fork.
+    tool_x, tool_y = altar_center_x + 19.5, altar_center_y + 18.0
+    box("שולחן כלי המזבח", (5.0, 2.4, 0.45),
+        (tool_x, tool_y, z + 2.6), "White altar stone", group, 0.12)
+    for leg_x in (-1.8, 1.8):
+        for leg_y in (-0.8, 0.8):
+            cylinder("רגל שולחן הכלים", 0.16, 2.4,
+                     (tool_x + leg_x, tool_y + leg_y, z + 1.2),
+                     "Bronze", group, 16)
+    for tool_index, y_offset in enumerate((-0.65, 0.0, 0.65), 1):
+        beam_between(f"ידית כלי מזבח {tool_index}",
+                     (tool_x - 1.8, tool_y + y_offset, z + 2.92),
+                     (tool_x + 1.6, tool_y + y_offset, z + 2.92),
+                     0.08, "Bronze", group, 12)
+        for tine in (-0.22, 0.0, 0.22):
+            beam_between(f"שן קלשון {tool_index}",
+                         (tool_x + 1.55, tool_y + y_offset + tine, z + 2.92),
+                         (tool_x + 2.05, tool_y + y_offset + tine, z + 2.92),
+                         0.045, "Bronze", group, 10)
 
     # Laver between the altar and hall, shifted south as stated in Middot 3:6.
+    laver_x, laver_y = altar_center_x + 28, COURT_CENTER_Y - 18
     cylinder("Laver basin", 2.0, 1.8,
-             (altar_center_x + 28, COURT_CENTER_Y - 18, z + 2.5),
-             "Bronze", group)
-    cylinder("Laver pedestal", 0.8, 2.5,
-             (altar_center_x + 28, COURT_CENTER_Y - 18, z + 1.25),
-             "Bronze", group)
+             (laver_x, laver_y, z + 2.7), "Bronze", group)
+    cylinder("מי הכיור", 1.72, 0.06,
+             (laver_x, laver_y, z + 3.63), "Water", group, 48)
+    cylinder("Laver pedestal", 0.8, 2.7,
+             (laver_x, laver_y, z + 1.35), "Bronze", group)
+    torus("שפת הכיור", 1.95, 0.14, (laver_x, laver_y, z + 3.58),
+          "Bronze", group)
+    # Ben Katin's twelve taps are shown as small radial bronze spouts.
+    for index in range(12):
+        angle = 2 * math.pi * index / 12
+        inner = (laver_x + 1.65 * math.cos(angle),
+                 laver_y + 1.65 * math.sin(angle), z + 2.25)
+        outer = (laver_x + 2.25 * math.cos(angle),
+                 laver_y + 2.25 * math.sin(angle), z + 2.18)
+        beam_between(f"דד הכיור {index + 1:02d}", inner, outer,
+                     0.09, "Bronze", group, 12)
+        sphere(f"ידית הכיור {index + 1:02d}", 0.13, outer,
+               "Bronze", group, subdivisions=2)
+    torus("גלגל המוכני", 1.25, 0.16,
+          (laver_x + 1.1, laver_y, z + 0.75), "Bronze", group,
+          rotation=(math.pi / 2, 0, 0))
     label("המזבח 32×32 אמה", altar_center_x, altar_center_y,
           z + ASSUMED["altar_height"] + 1.2, 2.0)
 
@@ -830,6 +1074,218 @@ def building_wall_with_gate(
          base_z + gate_height / 2), "Dark opening", group)
 
 
+def add_hall_facade_details(
+    facade_x: float, center_y: float, floor_z: float, height: float, group: str
+) -> None:
+    """Add sourced facade features while keeping uncertain ornament restrained."""
+    east_face_x = facade_x - 0.08
+    gate_width, gate_height = SOURCE["hall_gate"]
+
+    # The Hall opening had no doors; a curtain filled its 20 x 40 opening.
+    for fold in range(10):
+        fold_y = center_y - gate_width / 2 + 1 + fold * 2
+        fold_x = east_face_x - (0.12 if fold % 2 else 0.24)
+        box(f"פרוכת פתח האולם – קפל {fold + 1:02d}",
+            (0.16, 1.92, gate_height - 0.8),
+            (fold_x, fold_y, floor_z + gate_height / 2),
+            "Curtain", group, 0.03)
+    for y in (center_y - gate_width / 2, center_y + gate_width / 2):
+        box("מסגרת הזהב של פתח האולם", (0.22, 0.42, gate_height + 1.2),
+            (east_face_x - 0.18, y, floor_z + gate_height / 2),
+            "Gold", group, 0.05)
+    box("מסגרת הזהב העליונה של פתח האולם",
+        (0.22, gate_width + 0.8, 0.55),
+        (east_face_x - 0.18, center_y, floor_z + gate_height + 0.25),
+        "Gold", group, 0.05)
+    for tassel in range(12):
+        y = center_y - gate_width / 2 + 0.45 + tassel * (gate_width - 0.9) / 11
+        sphere("גדיל פרוכת האולם", 0.16,
+               (east_face_x - 0.28, y, floor_z + 0.35), "Gold", group,
+               scale=(0.7, 0.7, 1.4), subdivisions=2)
+
+    # Shallow stone courses and pilasters break up the otherwise monolithic
+    # 100-cubit facade. Their spacing is a visual reconstruction.
+    for course_z in range(10, 100, 10):
+        if course_z < gate_height:
+            side_width = (100 - gate_width) / 2
+            for side in (-1, 1):
+                box("נדבך מודגש בחזית האולם",
+                    (0.22, side_width - 1.0, 0.28),
+                    (east_face_x - 0.02,
+                     center_y + side * (gate_width / 2 + side_width / 2),
+                     floor_z + course_z), "Pale court stone", group, 0.03)
+        else:
+            box("נדבך מודגש בחזית האולם", (0.22, 98, 0.28),
+                (east_face_x - 0.02, center_y, floor_z + course_z),
+                "Pale court stone", group, 0.03)
+    for pilaster_y in (-36, -14, 14, 36):
+        box("אומנת חזית האולם", (0.7, 2.4, 44),
+            (east_face_x - 0.18, center_y + pilaster_y, floor_z + 22),
+            "Pale court stone", group, 0.16)
+        box("כותרת אומנת האולם", (1.1, 3.4, 1.2),
+            (east_face_x - 0.24, center_y + pilaster_y, floor_z + 44),
+            "Gold", group, 0.12)
+
+
+def add_hall_interior_details(
+    facade_x: float, body_start: float, center_y: float, floor_z: float,
+    group: str,
+) -> None:
+    # Cedar braces joined the high Hall wall to the Heikhal wall.
+    for beam_y in (-28, -18, -8, 8, 18, 28):
+        beam_between("קורת ארז מן האולם להיכל",
+                     (facade_x + 5.2, center_y + beam_y, floor_z + 43),
+                     (body_start - 0.4, center_y + beam_y, floor_z + 43),
+                     0.32, "Cedar", group, 16)
+
+    # Golden chains and crown-like ornaments descended from the ceiling.
+    for chain_y in (-18, -6, 6, 18):
+        beam_between("שרשרת זהב באולם",
+                     (facade_x + 8.5, center_y + chain_y, floor_z + 88),
+                     (facade_x + 8.5, center_y + chain_y, floor_z + 49),
+                     0.10, "Gold", group, 12)
+        torus("עטרת זהב באולם", 1.15, 0.16,
+              (facade_x + 8.5, center_y + chain_y, floor_z + 47.8),
+              "Gold", group, rotation=(0, math.pi / 2, 0))
+
+    # Marble and gold tables used when the showbread entered and left.
+    for table_y, table_mat, table_name in (
+        (center_y - 8, "White altar stone", "שולחן השיש באולם"),
+        (center_y + 8, "Gold", "שולחן הזהב באולם"),
+    ):
+        box(table_name, (3.2, 1.7, 0.28),
+            (body_start - 4.0, table_y, floor_z + 2.25),
+            table_mat, group, 0.08)
+        for dx in (-1.15, 1.15):
+            for dy in (-0.55, 0.55):
+                cylinder(f"רגל {table_name}", 0.10, 2.1,
+                         (body_start - 4.0 + dx, table_y + dy, floor_z + 1.05),
+                         table_mat, group, 12)
+
+    # The north auxiliary gate and the permanently closed southern gate.
+    for gate_y, gate_name, gate_mat in (
+        (center_y + 32.4, "השער הצפוני של האולם", "Dark opening"),
+        (center_y - 32.4, "השער הדרומי הסגור של האולם", "Gold"),
+    ):
+        box(gate_name, (5.0, 0.18, 12.0),
+            (facade_x + 10.0, gate_y, floor_z + 6.0), gate_mat, group, 0.06)
+
+    # The golden vine stood over the Heikhal doorway. The exact branching and
+    # quantity of donated leaves and clusters are necessarily illustrative.
+    vine_x = body_start - 0.22
+    beam_between("גזע גפן הזהב",
+                 (vine_x, center_y - 6.0, floor_z + 4.0),
+                 (vine_x, center_y + 6.0, floor_z + 24.0),
+                 0.18, "Gold", group, 16)
+    for side in (-1, 1):
+        for level in range(4):
+            branch_y = center_y + side * (2.2 + level * 2.1)
+            branch_z = floor_z + 9.0 + level * 4.1
+            beam_between("זמורת גפן הזהב",
+                         (vine_x, center_y + side * level * 1.5, branch_z - 1.4),
+                         (vine_x, branch_y, branch_z), 0.105, "Gold", group, 12)
+            for berry in range(5):
+                sphere("גרגר בגפן הזהב", 0.20,
+                       (vine_x - 0.12, branch_y + side * 0.22 * (berry % 2),
+                        branch_z - 0.34 * berry), "Gold", group,
+                       scale=(0.8, 0.8, 1.15), subdivisions=2)
+            sphere("עלה בגפן הזהב", 0.48,
+                   (vine_x - 0.10, branch_y - side * 0.6, branch_z + 0.25),
+                   "Gold", group, scale=(0.24, 1.0, 0.62), subdivisions=2)
+
+    # Helena's chandelier hangs above the Heikhal doorway.
+    chandelier_z = floor_z + 27.0
+    torus("נברשת הילני המלכה", 2.2, 0.16,
+          (vine_x - 0.18, center_y, chandelier_z), "Gold", group,
+          rotation=(0, math.pi / 2, 0))
+    for spoke in range(8):
+        angle = 2 * math.pi * spoke / 8
+        beam_between("קרן נברשת הילני",
+                     (vine_x - 0.18, center_y, chandelier_z),
+                     (vine_x - 0.18,
+                      center_y + 2.2 * math.cos(angle),
+                      chandelier_z + 2.2 * math.sin(angle)),
+                     0.065, "Gold", group, 10)
+
+
+def add_sanctuary_chambers(
+    body_start: float, body_depth: float, back_x: float,
+    center_y: float, floor_z: float,
+) -> None:
+    """Model the 38 chambers: 15 north, 15 south, and 8 west."""
+    group = "10 Chambers (schematic)"
+    usable_depth = body_depth - 8.0
+    room_x = usable_depth / 5.0
+    for tier, projection in enumerate((5.0, 6.0, 7.0)):
+        room_z = floor_z + 2.0 + tier * 15.0
+        for side, side_name in ((-1, "דרום"), (1, "צפון")):
+            outer_y = center_y + side * (35.0 + projection / 2)
+            for room in range(5):
+                x = body_start + 4.0 + room_x * (room + 0.5)
+                box(f"תא {side_name} קומה {tier + 1} חדר {room + 1}",
+                    (room_x - 0.42, projection, 13.2),
+                    (x, outer_y, room_z + 6.6),
+                    "Assumed element", group, 0.10)
+                # A recessed outer opening makes each cell individually legible.
+                box(f"חלון תא {side_name} {tier + 1}-{room + 1}",
+                    (2.2, 0.12, 2.8),
+                    (x, center_y + side * (35.0 + projection + 0.07),
+                     room_z + 7.0), "Dark opening", group, 0.04)
+
+    for tier, room_count in enumerate((3, 3, 2)):
+        room_span = 58.0 / room_count
+        projection = 5.0 + tier
+        room_z = floor_z + 2.0 + tier * 15.0
+        for room in range(room_count):
+            y = center_y - 29.0 + room_span * (room + 0.5)
+            box(f"תא מערב קומה {tier + 1} חדר {room + 1}",
+                (projection, room_span - 0.5, 13.2),
+                (back_x + projection / 2, y, room_z + 6.6),
+                "Assumed element", group, 0.10)
+            box(f"חלון תא מערב {tier + 1}-{room + 1}",
+                (0.12, 2.2, 2.8),
+                (back_x + projection + 0.07, y, room_z + 7.0),
+                "Dark opening", group, 0.04)
+
+    # A compact tower marks the winding stair (mesibah) serving the tiers.
+    stair_x, stair_y = body_start + 10.0, center_y + 43.0
+    cylinder("המסיבה – מגדל מדרגות לולייני", 4.0, 46.0,
+             (stair_x, stair_y, floor_z + 23.0),
+             "Assumed element", group, 40)
+    for level in (2.0, 17.0, 32.0, 45.0):
+        torus("חגורת אבן במסיבה", 4.02, 0.16,
+              (stair_x, stair_y, floor_z + level),
+              "Pale court stone", group)
+    box("פתח המסיבה", (2.2, 0.16, 4.0),
+        (stair_x, stair_y - 4.08, floor_z + 2.0),
+        "Dark opening", group, 0.08)
+
+
+def add_roof_parapet_and_spikes(
+    facade_x: float, back_x: float, center_y: float, floor_z: float,
+    height: float, group: str,
+) -> None:
+    roof_z = floor_z + height
+    # Middot 4:6: a three-cubit parapet and a further cubit of raven spikes.
+    box("מעקה הגג – מזרח", (1.0, 100, 3),
+        (facade_x + 0.5, center_y, roof_z + 1.5),
+        "Jerusalem limestone", group, 0.08)
+    box("מעקה הגג – מערב", (1.0, 70, 3),
+        (back_x - 0.5, center_y, roof_z + 1.5),
+        "Jerusalem limestone", group, 0.08)
+    for side in (-1, 1):
+        box("מעקה הגג – צפון/דרום", (back_x - facade_x, 1.0, 3),
+            ((facade_x + back_x) / 2, center_y + side * 34.5,
+             roof_z + 1.5), "Jerusalem limestone", group, 0.08)
+    for x in frange(facade_x + 2.0, back_x - 2.0, 4.0):
+        for y in (center_y - 33.5, center_y + 33.5):
+            cone("כליא עורב", 0.16, 1.0, (x, y, roof_z + 3.5),
+                 "Gold", group, 8)
+    for y in frange(center_y - 48.0, center_y + 48.0, 4.0):
+        cone("כליא עורב", 0.16, 1.0,
+             (facade_x + 1.2, y, roof_z + 3.5), "Gold", group, 8)
+
+
 def build_sanctuary() -> None:
     group = "09 Sanctuary"
     facade_x = (
@@ -861,6 +1317,7 @@ def build_sanctuary() -> None:
     box("Hall roof", (hall_depth, hall_width, 3),
         (facade_x + hall_depth / 2, COURT_CENTER_Y, floor_z + height - 1.5),
         "Jerusalem limestone", group)
+    add_hall_facade_details(facade_x, COURT_CENTER_Y, floor_z, height, group)
 
     # The 100-cubit facade projects 15 cubits beyond the 70-cubit body on
     # either side. These side spaces are the House of Knives (Beit Hahalifot).
@@ -879,6 +1336,19 @@ def build_sanctuary() -> None:
         body_width, heikhal_wall, height, floor_z,
         10, 20, group,
     )
+    # Two gilded leaves with recessed panels and pull rings form the Great Gate.
+    for side in (-1, 1):
+        door_y = COURT_CENTER_Y + side * 2.55
+        box("דלת הזהב של ההיכל", (0.24, 4.82, 19.5),
+            (body_start - 0.16, door_y, floor_z + 9.75),
+            "Gold", group, 0.08)
+        for panel_z in (3.5, 9.7, 15.9):
+            box("לוח שקוע בדלת ההיכל", (0.12, 3.55, 4.3),
+                (body_start - 0.31, door_y, floor_z + panel_z),
+                "Bronze", group, 0.05)
+        torus("טבעת דלת ההיכל", 0.42, 0.08,
+              (body_start - 0.40, COURT_CENTER_Y + side * 1.2, floor_z + 9.0),
+              "Gold", group, rotation=(0, math.pi / 2, 0))
     box("Sanctuary north outer wall", (body_depth, outer_wall, height),
         (body_start + body_depth / 2,
          COURT_CENTER_Y + body_width / 2 - outer_wall / 2,
@@ -893,6 +1363,20 @@ def build_sanctuary() -> None:
     box("Sanctuary roof", (body_depth, body_width, 3),
         (body_start + body_depth / 2, COURT_CENTER_Y, floor_z + height - 1.5),
         "Jerusalem limestone", group)
+    # High windows light the upper structure; their exact spacing is schematic.
+    for side in (-1, 1):
+        for window in range(6):
+            window_x = body_start + 9 + window * (body_depth - 18) / 5
+            box("חלון עליון בהיכל", (4.4, 0.16, 5.5),
+                (window_x, COURT_CENTER_Y + side * 35.06,
+                 floor_z + 61.0), "Dark opening", group, 0.10)
+            for bar in (-1.2, 0.0, 1.2):
+                box("סורג חלון ההיכל", (0.13, 0.22, 5.2),
+                    (window_x + bar, COURT_CENTER_Y + side * 35.14,
+                     floor_z + 61.0), "Gold", group, 0.03)
+    add_hall_interior_details(
+        facade_x, body_start, COURT_CENTER_Y, floor_z, group
+    )
 
     # Exact east-west interior sequence from Middot 4:7: 40-cubit Holy Place,
     # one-cubit Traksin, 20-cubit Holy of Holies. Yoma 5:1 places one curtain
@@ -935,18 +1419,12 @@ def build_sanctuary() -> None:
         (traksin_west_x + 0.175, west_start_y, floor_z + 20),
         "Curtain", group)
 
-    # Three visible chamber tiers indicate the 38 surrounding cells described
-    # in Middot 4:3-4. Individual cell widths are not specified in the Mishnah.
-    for tier, projection in enumerate((5.0, 6.0, 7.0)):
-        tier_z = floor_z + 10 + tier * 18
-        box(f"North chamber tier {tier + 1}", (body_depth - 8, projection, 14),
-            (body_start + body_depth / 2,
-             COURT_CENTER_Y + 16 + projection / 2,
-             tier_z + 7), "Assumed element", "10 Chambers (schematic)")
-        box(f"South chamber tier {tier + 1}", (body_depth - 8, projection, 14),
-            (body_start + body_depth / 2,
-             COURT_CENTER_Y - 16 - projection / 2,
-             tier_z + 7), "Assumed element", "10 Chambers (schematic)")
+    add_sanctuary_chambers(
+        body_start, body_depth, back_x, COURT_CENTER_Y, floor_z
+    )
+    add_roof_parapet_and_spikes(
+        facade_x, back_x, COURT_CENTER_Y, floor_z, height, group
+    )
 
     label("ההיכל 100×100×100 אמה", facade_x + 50, COURT_CENTER_Y,
           floor_z + height + 2, 3.0)
