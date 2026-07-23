@@ -77,6 +77,32 @@ def add_between(
     return obj
 
 
+def add_frustum(
+    name: str,
+    radius_bottom: float,
+    radius_top: float,
+    depth: float,
+    location: tuple[float, float, float],
+    material_name: str = "Gold",
+    group: str = VESSELS,
+    vertices: int = 32,
+) -> bpy.types.Object:
+    """Create a truncated cone for a pedestal or flared menorah cup."""
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=vertices,
+        radius1=base.m(radius_bottom),
+        radius2=base.m(radius_top),
+        depth=base.m(depth),
+        location=tuple(base.m(value) for value in location),
+    )
+    obj = bpy.context.object
+    obj.name = name
+    obj.data.name = name
+    obj.data.materials.append(base.MATERIALS[material_name])
+    base.move_to_collection(obj, group)
+    return obj
+
+
 def add_curved_branch(
     name: str,
     start: tuple[float, float, float],
@@ -109,10 +135,10 @@ def add_curved_branch(
     lower.handle_left_type = "FREE"
     lower.handle_right_type = "FREE"
     lower.handle_left = start_v
-    lower.handle_right = start_v + Vector((horizontal * 0.42, 0, vertical * 0.18))
+    lower.handle_right = start_v + Vector((horizontal * 0.52, 0, vertical * 0.06))
     upper.handle_left_type = "FREE"
     upper.handle_right_type = "FREE"
-    upper.handle_left = end_v - Vector((0, 0, vertical * 0.48))
+    upper.handle_left = end_v - Vector((0, 0, vertical * 0.54))
     upper.handle_right = end_v
 
     obj = bpy.data.objects.new(name, curve)
@@ -323,39 +349,80 @@ def add_showbread_table() -> None:
 def add_menorah() -> None:
     # Menachot 28b: 18 handbreadths = 3 six-handbreadth cubits high.
     x, y = 1.0, 6.0
-    base.cylinder("בסיס המנורה", 0.55, 0.16, (x, y, 0.08),
-                  "Gold", VESSELS, 48)
-    base.cylinder("רגל המנורה", 0.22, 0.34, (x, y, 0.33),
-                  "Gold", VESSELS, 32)
-    add_between("הקנה המרכזי", (x, y, 0.5), (x, y, 3.0), 0.075)
+    # The 18-handbreadth height is retained from the source.  The silhouette
+    # and ornamental rhythm follow the Temple Institute reconstruction: a
+    # polygonal stepped base, rounded U branches, and repeated almond-like
+    # cups, knobs and flowers beneath seven shallow oil lamps.
+    base.cylinder("מדרגת בסיס תחתונה", 0.64, 0.10, (x, y, 0.05),
+                  "Gold", VESSELS, 6)
+    base.cylinder("מדרגת בסיס אמצעית", 0.55, 0.10, (x, y, 0.15),
+                  "Gold", VESSELS, 6)
+    base.cylinder("בסיס מעוטר", 0.47, 0.18, (x, y, 0.29),
+                  "Gold", VESSELS, 6)
+    base.cylinder("שפת בסיס עליונה", 0.50, 0.05, (x, y, 0.405),
+                  "Gold", VESSELS, 6)
+    add_frustum("רגל המנורה המדורגת", 0.27, 0.15, 0.30,
+                (x, y, 0.58), vertices=32)
+    base.torus("חישוק רגל המנורה", 0.15, 0.028,
+               (x, y, 0.74), "Gold", VESSELS)
+    add_between("הקנה המרכזי", (x, y, 0.70), (x, y, 2.38), 0.072)
 
-    # Three paired branches rise to a common height. The precise curvature is
-    # an artistic interpolation; height and seven-lamp count follow the source.
-    branch_specs = ((0.85, 0.58), (1.15, 1.12), (1.45, 1.66))
+    branch_specs = (
+        (1.05, 1.55),  # the widest pair leaves the stem lowest
+        (1.39, 1.08),
+        (1.73, 0.59),
+    )
     lamp_x_positions = [x]
-    for join_z, spread in branch_specs:
-        base.sphere("כפתור המנורה", 0.13, (x, y, join_z),
-                    "Gold", VESSELS, scale=(1, 1, 0.9), subdivisions=2)
+    for pair_index, (join_z, spread) in enumerate(branch_specs, 1):
+        base.sphere(f"כפתור זוג קנים {pair_index}", 0.13,
+                    (x, y, join_z), "Gold", VESSELS,
+                    scale=(1.05, 1.05, 0.78), subdivisions=2)
+        base.torus(f"חישוק זוג קנים {pair_index}", 0.12, 0.022,
+                   (x, y, join_z + 0.09), "Gold", VESSELS)
         for direction in (-1, 1):
-            outer_x = x + direction * spread
-            add_curved_branch("קנה המנורה", (x, y, join_z),
-                              (outer_x, y, 3.0), 0.065)
-            lamp_x_positions.append(outer_x)
+            lamp_x = x + direction * spread
+            add_curved_branch(f"קנה המנורה {pair_index}-{direction:+d}",
+                              (x, y, join_z), (lamp_x, y, 2.38), 0.064)
+            lamp_x_positions.append(lamp_x)
 
-    for lamp_x in sorted(lamp_x_positions):
-        # Cup, knob and flower below every oil lamp.
-        base.sphere("כפתור קנה המנורה", 0.105,
-                    (lamp_x, y, 2.82), "Gold", VESSELS,
-                    scale=(1.1, 1.1, 0.8), subdivisions=2)
-        base.cylinder("גביע המנורה", 0.12, 0.13,
-                      (lamp_x, y, 2.94), "Gold", VESSELS, 24)
-        base.cylinder("נר המנורה", 0.16, 0.10, (lamp_x, y, 3.05),
-                      "Gold", VESSELS, 32)
-        base.box("להבת המנורה", (0.08, 0.08, 0.18),
-                 (lamp_x, y, 3.19), "אור הנרות", VESSELS, 0.035)
-    for flower_z in (0.72, 1.45, 2.20):
-        base.sphere("פרח בקנה המרכזי", 0.15, (x, y, flower_z),
-                    "Gold", VESSELS, scale=(1.5, 1.5, 0.45), subdivisions=2)
+    base.sphere("פרח תחתון בקנה המרכזי", 0.16, (x, y, 0.86),
+                "Gold", VESSELS, scale=(1.30, 1.30, 0.42), subdivisions=2)
+    base.torus("חישוק הפרח התחתון", 0.14, 0.025,
+               (x, y, 0.91), "Gold", VESSELS)
+
+    for lamp_index, lamp_x in enumerate(sorted(lamp_x_positions), 1):
+        base.sphere(f"כפתור קנה {lamp_index}", 0.12,
+                    (lamp_x, y, 2.39), "Gold", VESSELS,
+                    scale=(1.10, 1.10, 0.70), subdivisions=2)
+        add_frustum(f"גביע תחתון {lamp_index}", 0.09, 0.15, 0.12,
+                    (lamp_x, y, 2.49), vertices=24)
+        base.torus(f"שפת גביע תחתון {lamp_index}", 0.145, 0.018,
+                   (lamp_x, y, 2.55), "Gold", VESSELS)
+        base.sphere(f"פרח אמצעי {lamp_index}", 0.145,
+                    (lamp_x, y, 2.62), "Gold", VESSELS,
+                    scale=(1.22, 1.22, 0.42), subdivisions=2)
+        add_frustum(f"גביע אמצעי {lamp_index}", 0.09, 0.15, 0.12,
+                    (lamp_x, y, 2.72), vertices=24)
+        base.torus(f"שפת גביע אמצעי {lamp_index}", 0.145, 0.018,
+                   (lamp_x, y, 2.78), "Gold", VESSELS)
+        base.sphere(f"פרח עליון {lamp_index}", 0.14,
+                    (lamp_x, y, 2.84), "Gold", VESSELS,
+                    scale=(1.20, 1.20, 0.40), subdivisions=2)
+
+        # Shallow elongated bowls, visible oil and wicks replace candle forms.
+        base.sphere(f"קערת נר {lamp_index}", 0.17,
+                    (lamp_x, y, 2.93), "Gold", VESSELS,
+                    scale=(1.24, 0.84, 0.32), subdivisions=2)
+        rim = base.torus(f"שפת נר {lamp_index}", 0.155, 0.018,
+                         (lamp_x, y, 2.955), "Gold", VESSELS)
+        rim.scale = (1.24, 0.84, 1.0)
+        base.cylinder(f"שמן זית בנר {lamp_index}", 0.105, 0.014,
+                      (lamp_x, y, 2.972), "Olive oil", VESSELS, 24)
+        base.cylinder(f"פתילת נר {lamp_index}", 0.023, 0.09,
+                      (lamp_x, y, 3.01), "Hair and soot", VESSELS, 16)
+        base.sphere(f"להבת נר {lamp_index}", 0.075,
+                    (lamp_x, y, 3.13), "אור הנרות", VESSELS,
+                    scale=(0.62, 0.62, 1.65), subdivisions=2)
     interior_label("המנורה", x, y + 1.3, 0.06, 0.7)
 
 

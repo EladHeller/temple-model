@@ -32,6 +32,8 @@ SOURCE = {
     "courtyard_gate": 20.0,                # Exodus 27:16
     "tabernacle": (30.0, 10.0, 10.0),      # traditional reconstruction
     "board": (1.5, 1.0, 10.0),             # Exodus 26:16; Shabbat 98b
+    "board_socket": (0.75, 1.0, 1.0),       # Rashi on Exodus 26:17
+    "board_tenon": (0.25, 0.50, 1.0),       # traditional reconstruction
     "inner_curtain": (28.0, 4.0, 10),      # Exodus 26:1-2
     "goat_curtain": (30.0, 4.0, 11),       # Exodus 26:7-8
     "altar": (5.0, 5.0, 3.0),              # Exodus 27:1
@@ -124,7 +126,9 @@ def add_materials() -> None:
              roughness=0.86)
     material("עיזים", (0.17, 0.14, 0.11, 1), roughness=0.95)
     material("עורות אילים מאדמים", (0.42, 0.045, 0.025, 1), roughness=0.88)
-    material("עורות תחשים – גוון סכמטי", (0.11, 0.25, 0.30, 1), roughness=0.82)
+    # The identity and colour of tahash skins are uncertain.  A muted
+    # grey-brown hide is used here instead of a generic blue-green cue.
+    material("עורות תחשים – גוון סכמטי", (0.24, 0.21, 0.17, 1), roughness=0.88)
     material("עצי שיטים", (0.34, 0.13, 0.035, 1), roughness=0.68)
     material("זהב", (0.88, 0.55, 0.07, 1), metallic=0.9, roughness=0.2)
     material("כסף", (0.72, 0.76, 0.80, 1), metallic=0.92, roughness=0.18)
@@ -132,7 +136,6 @@ def add_materials() -> None:
     material("מים", (0.05, 0.30, 0.52, 1), metallic=0.05, roughness=0.12)
     material("לחם הפנים", (0.63, 0.31, 0.07, 1), roughness=0.82)
     material("כהה", (0.018, 0.012, 0.008, 1), roughness=1.0)
-    material("פרשנות", (0.27, 0.45, 0.55, 1), roughness=0.72)
     material("להבה", (0.95, 0.15, 0.015, 1), roughness=0.25,
              emission=(1.0, 0.08, 0.005, 1), emission_strength=4.0)
 
@@ -209,6 +212,131 @@ def rod(name: str, start: tuple[float, float, float],
                    tuple(v / CUBIT_M for v in ((a + b) / 2)), mat, group, 20)
     obj.rotation_mode = "QUATERNION"
     obj.rotation_quaternion = direction.to_track_quat("Z", "Y")
+    return obj
+
+
+def frustum(name: str, radius_bottom: float, radius_top: float, depth: float,
+            location: tuple[float, float, float], mat: str, group: str,
+            vertices: int = 32) -> bpy.types.Object:
+    """Create a truncated cone for a pedestal or flared menorah cup."""
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=vertices, radius1=m(radius_bottom), radius2=m(radius_top),
+        depth=m(depth), location=tuple(m(v) for v in location),
+    )
+    obj = bpy.context.object
+    obj.name = name
+    obj.data.name = name
+    obj.data.materials.append(MATERIALS[mat])
+    return move_to(obj, group)
+
+
+def curved_rod(name: str, start: tuple[float, float, float],
+               end: tuple[float, float, float], radius: float,
+               mat: str, group: str) -> bpy.types.Object:
+    """Make a smooth U-shaped menorah branch with an upright upper end."""
+    start_v = Vector(tuple(m(v) for v in start))
+    end_v = Vector(tuple(m(v) for v in end))
+    horizontal = end_v.x - start_v.x
+    vertical = end_v.z - start_v.z
+
+    curve = bpy.data.curves.new(name, type="CURVE")
+    curve.dimensions = "3D"
+    curve.resolution_u = 24
+    curve.bevel_depth = m(radius)
+    curve.bevel_resolution = 5
+    curve.resolution_v = 5
+    curve.use_fill_caps = True
+    spline = curve.splines.new(type="BEZIER")
+    spline.bezier_points.add(1)
+    lower, upper = spline.bezier_points
+    lower.co = start_v
+    upper.co = end_v
+    lower.handle_left_type = "FREE"
+    lower.handle_right_type = "FREE"
+    lower.handle_left = start_v
+    lower.handle_right = start_v + Vector((horizontal * 0.52, 0, vertical * 0.06))
+    upper.handle_left_type = "FREE"
+    upper.handle_right_type = "FREE"
+    upper.handle_left = end_v - Vector((0, 0, vertical * 0.54))
+    upper.handle_right = end_v
+
+    obj = bpy.data.objects.new(name, curve)
+    curve.materials.append(MATERIALS[mat])
+    collection(group).objects.link(obj)
+    return obj
+
+
+def open_socket(name: str, location: tuple[float, float, float], *,
+                west: bool, group: str) -> None:
+    """Build Rashi's hollow, one-cubit-high silver board socket."""
+    # Each socket is 1 x 3/4 x 1 cubit, with quarter-cubit walls.  Rotating
+    # those dimensions at the west wall leaves the same 1/2 x 1/4 cavity for
+    # the matching board tenon.
+    sx, sy, sz = ((1.0, 0.75, 1.0) if west else (0.75, 1.0, 1.0))
+    hx, hy = ((0.50, 0.25) if west else (0.25, 0.50))
+    z0, z1 = -m(sz) / 2, m(sz) / 2
+    ox, oy = m(sx) / 2, m(sy) / 2
+    ix, iy = m(hx) / 2, m(hy) / 2
+    vertices = (
+        (-ox, -oy, z0), (ox, -oy, z0), (ox, oy, z0), (-ox, oy, z0),
+        (-ox, -oy, z1), (ox, -oy, z1), (ox, oy, z1), (-ox, oy, z1),
+        (-ix, -iy, z0), (ix, -iy, z0), (ix, iy, z0), (-ix, iy, z0),
+        (-ix, -iy, z1), (ix, -iy, z1), (ix, iy, z1), (-ix, iy, z1),
+    )
+    faces = (
+        # Outer faces.
+        (0, 1, 5, 4), (1, 2, 6, 5),
+        (2, 3, 7, 6), (3, 0, 4, 7),
+        # Top and bottom rims.
+        (4, 5, 13, 12), (5, 6, 14, 13),
+        (6, 7, 15, 14), (7, 4, 12, 15),
+        (0, 8, 9, 1), (1, 9, 10, 2),
+        (2, 10, 11, 3), (3, 11, 8, 0),
+        # Inner faces, wound toward the open cavity.
+        (8, 12, 13, 9), (9, 13, 14, 10),
+        (10, 14, 15, 11), (11, 15, 12, 8),
+    )
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = tuple(m(value) for value in location)
+    mesh.materials.append(MATERIALS["כסף"])
+    collection(group).objects.link(obj)
+    bevel = obj.modifiers.new("עיגול קצוות", "BEVEL")
+    bevel.width = m(0.018)
+    bevel.segments = 2
+
+
+def wedge_prism(name: str, *, x_center: float, y_high: float, y_low: float,
+                width: float, height: float, mat: str,
+                group: str) -> bpy.types.Object:
+    """Create a closed triangular prism with its high end at ``y_high``."""
+    x0 = m(x_center - width / 2)
+    x1 = m(x_center + width / 2)
+    yh = m(y_high)
+    yl = m(y_low)
+    h = m(height)
+    vertices = (
+        (x0, yh, 0), (x1, yh, 0), (x0, yl, 0), (x1, yl, 0),
+        (x0, yh, h), (x1, yh, h),
+    )
+    faces = (
+        (0, 2, 3, 1),       # floor
+        (0, 1, 5, 4),       # high end
+        (0, 4, 2),          # west side
+        (1, 3, 5),          # east side
+        (4, 5, 3, 2),       # sloping top
+    )
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    mesh.materials.append(MATERIALS[mat])
+    collection(group).objects.link(obj)
+    bevel = obj.modifiers.new("עיגול קצוות", "BEVEL")
+    bevel.width = m(0.025)
+    bevel.segments = 2
     return obj
 
 
@@ -356,9 +484,14 @@ def add_boards(*, cutaway: bool = False) -> None:
         for index in range(20):
             x = 0.75 + index * 1.5
             if cutaway and side == "דרום":
-                # Low traces retain the footprint while opening the interior.
-                box(f"קרש {side} בחתך {index + 1:02d}", (1.48, 1, 0.35),
-                    (x, y, 0.175), "פרשנות", group, 0.02)
+                # The removed display wall leaves its forty silver sockets in
+                # place.  Their open mortises show where the two tenons of
+                # every board would have fitted.
+                for tenon, dx in enumerate((-0.375, 0.375), 1):
+                    open_socket(
+                        f"אדן כסף דרום {index + 1:02d}-{tenon}",
+                        (x + dx, y, 0.5), west=False, group=group,
+                    )
                 continue
             box(f"קרש {side} {index + 1:02d}", (1.48, 1, 9),
                 (x, y, 5.5), "זהב", group, 0.025)
@@ -370,20 +503,29 @@ def add_boards(*, cutaway: bool = False) -> None:
                     (15, y + (0.56 if side == "דרום" else -0.56), z), 0.075, "זהב", group)
                 rod(f"בריח {side} מערבי בגובה {z}", (15, y + (0.56 if side == "דרום" else -0.56), z),
                     (30, y + (0.56 if side == "דרום" else -0.56), z), 0.075, "זהב", group)
-            rod(f"בריח תיכון {side}", (0, y, 5), (30, y, 5), 0.065, "פרשנות", group)
+            rod(f"בריח תיכון {side}", (0, y, 5), (30, y, 5), 0.065, "זהב", group)
 
-    # Six rear boards, with the two corner boards shown as narrower visible
-    # returns.  Their exact joining geometry is one of the textual ambiguities.
+    # Six rear boards and two full-width corner boards.  Following Rashi's
+    # constant-thickness reconstruction, one cubit of each 1.5-cubit corner
+    # board overlaps the adjoining structure and half a cubit completes the
+    # west face.  Anchoring the full board at +/-4.25 keeps its sockets inside
+    # the outer +/-5-cubit footprint.
     for index in range(6):
         y = -3.75 + index * 1.5
         box(f"קרש מערב {index + 1:02d}", (1, 1.48, 9), (29.5, y, 5.5),
             "זהב", group, 0.025)
         add_board_sockets(29.5, y, "מערב", index + 1, group, west=True)
-    for side, y in (("צפון", -4.75), ("דרום", 4.75)):
+    for side, y in (("צפון", -4.25), ("דרום", 4.25)):
         if cutaway and side == "דרום":
+            # The cutaway also removes the southern corner board, but its two
+            # sockets remain so that all 96 board sockets are represented.
+            for tenon, dy in enumerate((-0.375, 0.375), 1):
+                open_socket(f"אדן כסף קרש מקצוע {side}-{tenon}",
+                            (29.5, y + dy, 0.5), west=True, group=group)
             continue
-        box(f"קרש מקצוע {side}", (1, 0.5, 9), (29.5, y, 5.5),
-            "פרשנות", group, 0.025)
+        box(f"קרש מקצוע {side}", (1, 1.5, 9), (29.5, y, 5.5),
+            "זהב", group, 0.025)
+        add_board_sockets(29.5, y, f"מקצוע {side}", 1, group, west=True)
 
     # Five gilded entrance posts on copper sockets.
     for index, y in enumerate((-4, -2, 0, 2, 4), 1):
@@ -394,13 +536,17 @@ def add_boards(*, cutaway: bool = False) -> None:
 def add_board_sockets(x: float, y: float, side: str, index: int,
                       group: str, west: bool = False) -> None:
     if west:
-        for dy in (-0.375, 0.375):
-            box(f"אדן כסף {side} {index}-{dy:+}", (1, 0.7, 1),
-                (29.5, y + dy, 0.5), "כסף", group, 0.035)
+        for tenon, dy in enumerate((-0.375, 0.375), 1):
+            open_socket(f"אדן כסף {side} {index:02d}-{tenon}",
+                        (x, y + dy, 0.5), west=True, group=group)
+            box(f"יד קרש {side} {index:02d}-{tenon}", (0.50, 0.25, 1.0),
+                (x, y + dy, 0.5), "זהב", group, 0.01)
     else:
-        for dx in (-0.375, 0.375):
-            box(f"אדן כסף {side} {index}-{dx:+}", (0.7, 1, 1),
-                (x + dx, y, 0.5), "כסף", group, 0.035)
+        for tenon, dx in enumerate((-0.375, 0.375), 1):
+            open_socket(f"אדן כסף {side} {index:02d}-{tenon}",
+                        (x + dx, y, 0.5), west=False, group=group)
+            box(f"יד קרש {side} {index:02d}-{tenon}", (0.25, 0.50, 1.0),
+                (x + dx, y, 0.5), "זהב", group, 0.01)
 
 
 def add_outer_structure() -> None:
@@ -500,21 +646,29 @@ def add_altar_and_laver() -> None:
                "להבה", group, scale=(0.65, 0.65, flame_h / 0.44))
 
     # The article identifies a ramp as a basic altar component. Its dimensions
-    # for the wilderness altar are not supplied, so the blue-grey ramp is a
-    # visible modelling assumption rather than a sourced measurement.
+    # and construction for the wilderness altar are not supplied.  It is shown
+    # here as copper side walls retaining compacted earth, matching the altar's
+    # copper shell and earth filling instead of using a generic schematic hue.
     ramp_length = ASSUMED["altar_ramp_length"]
     ramp_width = ASSUMED["altar_ramp_width"]
-    bpy.ops.mesh.primitive_cube_add(location=(m(x), m(2.5 + ramp_length / 2), m(1.5)))
-    ramp = bpy.context.object
-    ramp.name = "כבש המזבח – מידות סכמטיות"
-    ramp.data.name = ramp.name
-    ramp.scale = (m(ramp_width / 2), m(ramp_length / 2), m(0.12))
-    # Local +Y points away from the altar, so a negative X rotation keeps the
-    # altar-side end high and the outer end at ground level.
-    ramp.rotation_euler.x = -math.atan2(3.0, ramp_length)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    ramp.data.materials.append(MATERIALS["פרשנות"])
-    move_to(ramp, group)
+    ramp_wall = 0.18
+    y_high = 2.5
+    y_low = y_high + ramp_length
+    for side, ramp_x in (("מערב", x - ramp_width / 2 + ramp_wall / 2),
+                         ("מזרח", x + ramp_width / 2 - ramp_wall / 2)):
+        wedge_prism(
+            f"דופן נחושת כבש המזבח {side}", x_center=ramp_x,
+            y_high=y_high, y_low=y_low, width=ramp_wall, height=3.0,
+            mat="נחושת", group=group,
+        )
+    wedge_prism(
+        "מילוי אדמה בכבש המזבח – מידות סכמטיות", x_center=x,
+        y_high=y_high + 0.06, y_low=y_low - 0.10,
+        width=ramp_width - ramp_wall * 2, height=2.92,
+        mat="חול המדבר", group=group,
+    )
+    box("סף נחושת בתחתית כבש המזבח", (ramp_width, 0.16, 0.16),
+        (x, y_low - 0.08, 0.08), "נחושת", group, 0.025)
 
     x = -10
     cylinder("בסיס הכיור", 0.72, 0.65, (x, 0, 0.325), "נחושת", group, 36)
@@ -656,7 +810,7 @@ def add_table() -> None:
             box(f"סניף מערכת {stack_number}",
                 (0.055, 0.82, support_top - 1.50),
                 (side_x, y, 1.50 + (support_top - 1.50) / 2),
-                "פרשנות", group, 0.018)
+                "זהב", group, 0.018)
 
         # Most opinions place each frankincense bowl in the cavity of the top
         # loaf; that placement is selected here.
@@ -670,24 +824,72 @@ def add_table() -> None:
 def add_menorah() -> None:
     group = "04 כלי הקודש"
     x, y = 15, 2.5
-    cylinder("בסיס המנורה", 0.52, 0.16, (x, y, 0.08), "זהב", group, 40)
-    rod("קנה מרכזי", (x, y, 0.16), (x, y, ASSUMED["lamp_height"]),
-        0.075, "זהב", group)
+    # The silhouette and ornamental rhythm follow the Temple Institute's
+    # full-size reconstruction: a broad polygonal stepped base, rounded U
+    # branches, and repeated almond-like cups, knobs and flowers below each
+    # oil lamp.  The Torah gives no total height for the Tabernacle menorah;
+    # the existing three-cubit display height remains an explicit assumption.
+    cylinder("מדרגת בסיס תחתונה", 0.64, 0.10, (x, y, 0.05), "זהב", group, 6)
+    cylinder("מדרגת בסיס אמצעית", 0.55, 0.10, (x, y, 0.15), "זהב", group, 6)
+    cylinder("בסיס מעוטר", 0.47, 0.18, (x, y, 0.29), "זהב", group, 6)
+    cylinder("שפת בסיס עליונה", 0.50, 0.05, (x, y, 0.405), "זהב", group, 6)
+    frustum("רגל המנורה המדורגת", 0.27, 0.15, 0.30,
+            (x, y, 0.58), "זהב", group, 32)
+    torus("חישוק רגל המנורה", 0.15, 0.028, (x, y, 0.74), "זהב", group)
+    rod("קנה מרכזי", (x, y, 0.70), (x, y, 2.38), 0.072, "זהב", group)
+
+    branch_specs = (
+        (1.05, 1.55),  # the widest pair leaves the stem lowest
+        (1.39, 1.08),
+        (1.73, 0.59),
+    )
     lamp_xs = [x]
-    for spread, join_z in ((0.55, 0.75), (1.05, 1.18), (1.5, 1.62)):
-        sphere("כפתור המנורה", 0.12, (x, y, join_z), "זהב", group)
+    for pair_index, (join_z, spread) in enumerate(branch_specs, 1):
+        sphere(f"כפתור זוג קנים {pair_index}", 0.13, (x, y, join_z),
+               "זהב", group, scale=(1.05, 1.05, 0.78))
+        torus(f"חישוק זוג קנים {pair_index}", 0.12, 0.022,
+              (x, y, join_z + 0.09), "זהב", group)
         for side in (-1, 1):
-            outer_x = x + side * spread
-            # Segmented curves preserve the familiar rounded branch silhouette.
-            rod("קנה המנורה", (x, y, join_z), (outer_x, y, 2.45),
-                0.06, "זהב", group)
-            rod("קנה המנורה", (outer_x, y, 2.45), (outer_x, y, 3.0),
-                0.06, "זהב", group)
-            lamp_xs.append(outer_x)
-    for lamp_x in sorted(lamp_xs):
-        cylinder("נר המנורה", 0.14, 0.10, (lamp_x, y, 3.04), "זהב", group, 24)
-        sphere("להבת המנורה", 0.09, (lamp_x, y, 3.20), "להבה", group,
-               scale=(0.6, 0.6, 1.6))
+            lamp_x = x + side * spread
+            curved_rod(f"קנה המנורה {pair_index}-{side:+d}",
+                       (x, y, join_z), (lamp_x, y, 2.38),
+                       0.064, "זהב", group)
+            lamp_xs.append(lamp_x)
+
+    # A flower above the base and the paired-branch knobs articulate the
+    # central shaft in the same tiered manner visible in the reconstruction.
+    sphere("פרח תחתון בקנה המרכזי", 0.16, (x, y, 0.86), "זהב", group,
+           scale=(1.30, 1.30, 0.42))
+    torus("חישוק הפרח התחתון", 0.14, 0.025, (x, y, 0.91), "זהב", group)
+
+    for lamp_index, lamp_x in enumerate(sorted(lamp_xs), 1):
+        # Three flared cups separated by rounded flowers form the prominent
+        # upper ornament seen beneath every lamp in the reference photograph.
+        sphere(f"כפתור קנה {lamp_index}", 0.12, (lamp_x, y, 2.39),
+               "זהב", group, scale=(1.10, 1.10, 0.70))
+        frustum(f"גביע תחתון {lamp_index}", 0.09, 0.15, 0.12,
+                (lamp_x, y, 2.49), "זהב", group, 24)
+        torus(f"שפת גביע תחתון {lamp_index}", 0.145, 0.018,
+              (lamp_x, y, 2.55), "זהב", group)
+        sphere(f"פרח אמצעי {lamp_index}", 0.145, (lamp_x, y, 2.62),
+               "זהב", group, scale=(1.22, 1.22, 0.42))
+        frustum(f"גביע אמצעי {lamp_index}", 0.09, 0.15, 0.12,
+                (lamp_x, y, 2.72), "זהב", group, 24)
+        torus(f"שפת גביע אמצעי {lamp_index}", 0.145, 0.018,
+              (lamp_x, y, 2.78), "זהב", group)
+        sphere(f"פרח עליון {lamp_index}", 0.14, (lamp_x, y, 2.84),
+               "זהב", group, scale=(1.20, 1.20, 0.40))
+
+        # The lamps are shallow, elongated oil bowls rather than candles.
+        sphere(f"קערת נר {lamp_index}", 0.17, (lamp_x, y, 2.93), "זהב", group,
+               scale=(1.24, 0.84, 0.32))
+        rim = torus(f"שפת נר {lamp_index}", 0.155, 0.018,
+                    (lamp_x, y, 2.955), "זהב", group)
+        rim.scale = (1.24, 0.84, 1.0)
+        cylinder(f"פתילת נר {lamp_index}", 0.023, 0.09,
+                 (lamp_x, y, 3.01), "כהה", group, 16)
+        sphere(f"להבת נר {lamp_index}", 0.075, (lamp_x, y, 3.13),
+               "להבה", group, scale=(0.62, 0.62, 1.65))
 
 
 def add_interior() -> None:
@@ -765,7 +967,8 @@ def setup_scene(interior: bool) -> None:
     scene["cubit_meters"] = CUBIT_M
     scene["accuracy_note"] = (
         "SOURCE values are textual or traditional dimensions. ASSUMED values "
-        "and blue-grey elements are schematic educational completions."
+        "are schematic educational completions shown in the estimated material "
+        "colour of each object."
     )
 
 
