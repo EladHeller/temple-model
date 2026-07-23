@@ -1,0 +1,54 @@
+name: Deploy static Temple viewer to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Assemble static site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp viewer.html _site/index.html
+          cp viewer.html _site/viewer.html
+          cp temple_middot.glb _site/
+          cp temple_middot_interior.glb _site/
+          cp temple_middot_preview.png _site/
+          cp temple_middot_interior_preview.png _site/
+          test -s _site/index.html
+          test -s _site/temple_middot.glb
+          test -s _site/temple_middot_interior.glb
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
