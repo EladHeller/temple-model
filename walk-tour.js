@@ -285,12 +285,17 @@ export function createWalkTour({
       model.updateMatrixWorld(true);
       model.traverse(object => {
         if (!object.isMesh || object.visible === false) return;
-        if (/^(?:תווית|label)/i.test(object.name)) return;
+        // GLTFLoader sanitizes node names for animation bindings, replacing
+        // spaces with underscores. Match the original Blender names so
+        // multi-word walkable surfaces (including the curved Temple steps)
+        // are not accidentally treated as obstacles.
+        const collisionName = object.name.replaceAll('_', ' ');
+        if (/^(?:תווית|label)/i.test(collisionName)) return;
         object.frustumCulled = true;
-        const isGround = /(?:קרקע|^רצפת|^משטח|אבן ריצוף|^מעלת|^מעלה |מעלה (?:חיצונית )?במקווה|^בסיס העזרה|^המפלס המוגבה|^רצועת החיל|^כבש|^דופן נחושת כבש|^מילוי אדמה בכבש|^מילוי אדמה במזבח|^פני אדמת המזבח|^דופן מזבח הנחושת|מקום הילוך|אבן הסף|מעמד הטהרה)/.test(object.name);
+        const isGround = /(?:קרקע|^רצפת|^משטח|אבן ריצוף|^מעלת|^מעלה |מעלה (?:חיצונית )?במקווה|^בסיס העזרה|^המפלס המוגבה|^רצועת החיל|^כבש|^דופן נחושת כבש|^מילוי אדמה בכבש|^מילוי אדמה במזבח|^פני אדמת המזבח|^דופן מזבח הנחושת|מקום הילוך|אבן הסף|מעמד הטהרה)/.test(collisionName);
         if (isGround) {
           groundMeshes.push(object);
-        } else if (!/סורג/.test(object.name)) {
+        } else if (!/סורג/.test(collisionName)) {
           obstacleBoxes.push({ name: object.name, box: new THREE.Box3().setFromObject(object) });
         }
       });
