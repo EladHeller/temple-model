@@ -14,6 +14,10 @@ const STEP_TOLERANCE = 0.03;
 const MAX_DROP = 1.25;
 const UP = new THREE.Vector3(0, 1, 0);
 const DOWN = new THREE.Vector3(0, -1, 0);
+// The collision system uses axis-aligned bounding boxes. A diagonal handrail
+// therefore produces a much wider invisible box than the slender rail itself
+// and can seal the narrow immersion steps that it is meant to accompany.
+const NON_BLOCKING_OBSTACLE = /(?:סורג|לשכת המצורעים – מאחז ירידה)/;
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -295,7 +299,7 @@ export function createWalkTour({
         const isGround = /(?:קרקע|^רצפת|^משטח|אבן ריצוף|^מעלת|^מעלה |מעלה (?:חיצונית )?במקווה|^בסיס העזרה|^המפלס המוגבה|^רצועת החיל|^כבש|^דופן נחושת כבש|^מילוי אדמה בכבש|^מילוי אדמה במזבח|^פני אדמת המזבח|^דופן מזבח הנחושת|מקום הילוך|אבן הסף|מעמד הטהרה)/.test(collisionName);
         if (isGround) {
           groundMeshes.push(object);
-        } else if (!/סורג/.test(collisionName)) {
+        } else if (!NON_BLOCKING_OBSTACLE.test(collisionName)) {
           obstacleBoxes.push({ name: object.name, box: new THREE.Box3().setFromObject(object) });
         }
       });
