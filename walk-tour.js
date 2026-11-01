@@ -93,6 +93,8 @@ export function createWalkTour({
   const sunlight = new THREE.DirectionalLight(0xffe0aa, 3.4);
   sunlight.position.set(-45, 80, 30);
   scene.add(sunlight);
+  const coveredFill = new THREE.AmbientLight(0xffedd5, 0);
+  scene.add(coveredFill);
 
   let model = null;
   let groundMeshes = [];
@@ -111,6 +113,7 @@ export function createWalkTour({
   let joystickCenter = { x: 0, y: 0 };
 
   function setSceneMood(variant) {
+    coveredFill.intensity = variant === 'covered' ? 1.4 : 0;
     const interior = variant === 'interior';
     scene.background = new THREE.Color(interior ? 0x14171d : 0x4a5664);
     scene.fog = new THREE.Fog(interior ? 0x14171d : 0x4a5664, interior ? 70 : 220, interior ? 230 : 640);
@@ -299,7 +302,9 @@ export function createWalkTour({
         const isGround = /(?:קרקע|^רצפת|^משטח|אבן ריצוף|^מעלת|^מעלה |מעלה (?:חיצונית )?במקווה|^בסיס העזרה|^המפלס המוגבה|^רצועת החיל|^כבש|^דופן נחושת כבש|^מילוי אדמה בכבש|^מילוי אדמה במזבח|^פני אדמת המזבח|^דופן מזבח הנחושת|מקום הילוך|אבן הסף|מעמד הטהרה)/.test(collisionName);
         if (isGround) {
           groundMeshes.push(object);
-        } else if (!NON_BLOCKING_OBSTACLE.test(collisionName)) {
+        } else if (!object.userData.covering_layer && !NON_BLOCKING_OBSTACLE.test(collisionName)) {
+          // Draped cloth wraps the whole room; its bounding box is not a wall.
+          // The complete board walls and entrance screen provide collisions.
           obstacleBoxes.push({ name: object.name, box: new THREE.Box3().setFromObject(object) });
         }
       });

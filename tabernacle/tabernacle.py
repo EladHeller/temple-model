@@ -10,7 +10,8 @@ Run from this directory with Blender 4.2 or later:
     blender --background --python tabernacle.py -- \
       --save tabernacle.blend --export tabernacle.glb --render
 
-Add ``--interior`` to create the open cutaway companion model.  All source
+Add ``--interior`` to create the open cutaway companion model.
+Add ``--covered`` to create the complete covered companion model.  All source
 measurements are in cubits; one cubit is represented as 0.5 metres.
 """
 
@@ -47,6 +48,7 @@ SOURCE = {
 INTERPRETED = {
     # Malbim on Exodus 25:14: the poles made by Moses were ten cubits long,
     # matching the depth of the Tabernacle's Holy of Holies.
+    "roof_hides": (30.0, 10.0),  # Rashi Exodus 26:14: two superposed roof covers
     "ark_pole_length": 10.0,
     # Rashi on Exodus 25:20, following Sukkah 5b: ten handbreadths of clear
     # space separated the spread wings from the upper face of the cover.
@@ -57,7 +59,10 @@ INTERPRETED = {
 # The text gives no dimensions for these items or construction details.
 ASSUMED = {
     "laver_size": 1.35,
-    "cover_thickness": 0.10,
+    "cover_thickness": 0.025,
+    "cover_layer_separation": 0.065,  # display clearance, not a source dimension
+    "cover_corner_tucks": "diagonal overlapping folds",
+    "cover_woven_motifs": "schematic lion outside and eagle inside; repeat artistic",
     "curtain_thickness": 0.08,
     "post_radius": 0.14,
     "cherub_form": "schematic winged figures",
@@ -138,9 +143,8 @@ def add_materials() -> None:
              roughness=0.86)
     material("עיזים", (0.17, 0.14, 0.11, 1), roughness=0.95)
     material("עורות אילים מאדמים", (0.42, 0.045, 0.025, 1), roughness=0.88)
-    # The identity and colour of tahash skins are uncertain.  A muted
-    # grey-brown hide is used here instead of a generic blue-green cue.
-    material("עורות תחשים – גוון סכמטי", (0.24, 0.21, 0.17, 1), roughness=0.88)
+    # Rashi Exodus 25:5 describes many colours. The palette is artistic.
+    material("עורות תחשים – גוון סכמטי", (0.06, 0.22, 0.30, 1), roughness=0.65)
     material("עצי שיטים", (0.34, 0.13, 0.035, 1), roughness=0.68)
     material("זהב", (0.88, 0.55, 0.07, 1), metallic=0.9, roughness=0.2)
     material("כסף", (0.72, 0.76, 0.80, 1), metallic=0.92, roughness=0.18)
@@ -150,6 +154,48 @@ def add_materials() -> None:
     material("כהה", (0.018, 0.012, 0.008, 1), roughness=1.0)
     material("להבה", (0.95, 0.15, 0.015, 1), roughness=0.25,
              emission=(1.0, 0.08, 0.005, 1), emission_strength=4.0)
+
+    for name, color, metal in (
+        ("אריג יריעות המשכן", (.16, .055, .22, 1), 0),
+        ("אריג עיזים שחור", (.025, .021, .018, 1), 0),
+        ("מכסה אילים", (.45, .025, .015, 1), 0),
+        ("מכסה תחשים", (.06, .22, .30, 1), 0),
+        ("לולאות תכלת – יריעות", (.08, .28, .62, 1), 0),
+        ("לולאות עיזים", (.035, .028, .02, 1), 0),
+        ("קרסי זהב – יריעות", (.88, .55, .07, 1), .9),
+        ("קרסי נחושת – יריעות", (.48, .21, .055, 1), .72),
+        ("אריגה תכלת", (.08, .28, .62, 1), 0),
+        ("אריגה שני", (.68, .035, .025, 1), 0),
+        ("אריגה שש", (.88, .82, .68, 1), 0),
+    ):
+        material(name, color, metallic=metal, roughness=.85 if not metal else .3)
+
+
+def add_covering_textures() -> None:
+    # These UV textures are embedded in GLB, including their thread normal map.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from covering_textures import create_textures
+    texture_dir = create_textures(os.path.join(os.path.dirname(__file__), "textures"))
+    normal_image = bpy.data.images.load(str(texture_dir / "weave_normal.png"), check_existing=True)
+    normal_image.colorspace_settings.name = "Non-Color"
+    hide_normal = bpy.data.images.load(str(texture_dir / "hide_normal.png"), check_existing=True)
+    hide_normal.colorspace_settings.name = "Non-Color"
+    for name, texture in (("אריג יריעות המשכן", "woven"), ("אריג עיזים שחור", "goat"),
+                          ("מכסה אילים", "ram"), ("מכסה תחשים", "tahash")):
+        mat = MATERIALS[name]
+        nodes = mat.node_tree.nodes
+        bsdf = nodes.get("Principled BSDF")
+        image = nodes.new("ShaderNodeTexImage")
+        image.image = bpy.data.images.load(str(texture_dir / (texture + ".png")), check_existing=True)
+        mat.node_tree.links.new(image.outputs["Color"], bsdf.inputs["Base Color"])
+        normal_texture = nodes.new("ShaderNodeTexImage")
+        normal_texture.image = hide_normal if texture in ("ram", "tahash") else normal_image
+        if texture in ("ram", "tahash"):
+            bsdf.inputs["Roughness"].default_value = .65
+        normal = nodes.new("ShaderNodeNormalMap")
+        normal.inputs["Strength"].default_value = .35
+        mat.node_tree.links.new(normal_texture.outputs["Color"], normal.inputs["Color"])
+        mat.node_tree.links.new(normal.outputs["Normal"], bsdf.inputs["Normal"])
 
 
 def box(name: str, size: tuple[float, float, float],
@@ -512,11 +558,15 @@ def add_embroidered_textile(name: str, x: float, half_span: float,
                        scale=(0.32, 1, 1))
 
 
-def add_boards(*, cutaway: bool = False) -> None:
+def add_boards(*, cutaway: bool = False, full_width: bool = False) -> None:
     group = "02 קרשים אדנים ובריחים"
     # Rabbi Nehemiah's constant one-cubit thickness is selected.  It is a
     # visible parameter, since Rabbi Judah's tapering boards are an alternative.
-    for side, y in (("צפון", -4.5), ("דרום", 4.5)):
+    side_center = 5.5 if full_width else 4.5
+    rear_x = 30.5 if full_width else 29.5
+    bar_offset = 0.5 if full_width else 0.56
+    bar_radius = 0.04 if full_width else 0.075
+    for side, y in (("צפון", -side_center), ("דרום", side_center)):
         for index in range(20):
             x = 0.75 + index * 1.5
             if cutaway and side == "דרום":
@@ -535,23 +585,23 @@ def add_boards(*, cutaway: bool = False) -> None:
         if not (cutaway and side == "דרום"):
             # Four half-wall bars and the full middle bar.
             for z in (2.5, 7.5):
-                rod(f"בריח {side} מזרחי בגובה {z}", (0, y + (0.56 if side == "דרום" else -0.56), z),
-                    (15, y + (0.56 if side == "דרום" else -0.56), z), 0.075, "זהב", group)
-                rod(f"בריח {side} מערבי בגובה {z}", (15, y + (0.56 if side == "דרום" else -0.56), z),
-                    (30, y + (0.56 if side == "דרום" else -0.56), z), 0.075, "זהב", group)
+                rod(f"בריח {side} מזרחי בגובה {z}", (0, y + (bar_offset if side == "דרום" else -bar_offset), z),
+                    (15, y + (bar_offset if side == "דרום" else -bar_offset), z), bar_radius, "זהב", group)
+                rod(f"בריח {side} מערבי בגובה {z}", (15, y + (bar_offset if side == "דרום" else -bar_offset), z),
+                    (30, y + (bar_offset if side == "דרום" else -bar_offset), z), bar_radius, "זהב", group)
             rod(f"בריח תיכון {side}", (0, y, 5), (30, y, 5), 0.065, "זהב", group)
 
     # Six rear boards and two full-width corner boards.  Following Rashi's
     # constant-thickness reconstruction, one cubit of each 1.5-cubit corner
     # board overlaps the adjoining structure and half a cubit completes the
-    # west face.  Anchoring the full board at +/-4.25 keeps its sockets inside
-    # the outer +/-5-cubit footprint.
+    # west face. The covered model uses the full 12-cubit outside width;
+    # legacy cutaways retain their earlier 10-cubit outside footprint.
     for index in range(6):
         y = -3.75 + index * 1.5
-        box(f"קרש מערב {index + 1:02d}", (1, 1.48, 9), (29.5, y, 5.5),
+        box(f"קרש מערב {index + 1:02d}", (1, 1.48, 9), (rear_x, y, 5.5),
             "זהב", group, 0.025)
-        add_board_sockets(29.5, y, "מערב", index + 1, group, west=True)
-    for side, y in (("צפון", -4.25), ("דרום", 4.25)):
+        add_board_sockets(rear_x, y, "מערב", index + 1, group, west=True)
+    for side, y in (("צפון", -5.25 if full_width else -4.25), ("דרום", 5.25 if full_width else 4.25)):
         if cutaway and side == "דרום":
             # The cutaway also removes the southern corner board, but its two
             # sockets remain so that all 96 board sockets are represented.
@@ -559,12 +609,12 @@ def add_boards(*, cutaway: bool = False) -> None:
                 open_socket(f"אדן כסף קרש מקצוע {side}-{tenon}",
                             (29.5, y + dy, 0.5), west=True, group=group)
             continue
-        box(f"קרש מקצוע {side}", (1, 1.5, 9), (29.5, y, 5.5),
+        box(f"קרש מקצוע {side}", (1, 1.5, 9), (rear_x, y, 5.5),
             "זהב", group, 0.025)
-        add_board_sockets(29.5, y, f"מקצוע {side}", 1, group, west=True)
+        add_board_sockets(rear_x, y, f"מקצוע {side}", 1, group, west=True)
 
     # Five gilded entrance posts on copper sockets.
-    for index, y in enumerate((-4, -2, 0, 2, 4), 1):
+    for index, y in enumerate((-5, -2.5, 0, 2.5, 5) if full_width else (-4, -2, 0, 2, 4), 1):
         cylinder(f"עמוד פתח המשכן {index}", 0.12, 10, (0, y, 5), "זהב", group, 20)
         cylinder(f"אדן נחושת לפתח {index}", 0.23, 0.35, (0, y, 0.175), "נחושת", group, 24)
 
@@ -585,30 +635,188 @@ def add_board_sockets(x: float, y: float, side: str, index: int,
                 (x + dx, y, 0.5), "זהב", group, 0.01)
 
 
+def covering_point(u: float, v: float, lift: float = 0.0) -> Vector:
+    """Fold cloth coordinates (cubits) over a 31 x 12 outer board footprint.
+
+    The rear corner squares fold back on their diagonals; their tuck and tiny
+    display separation are artistic, not an additional sourced measurement.
+    Negative u is the two-cubit front fold of the sixth goat curtain.
+    """
+    side = max(0.0, abs(v) - 6.0)
+    sign = -1 if v < 0 else 1
+    y = max(-6.0, min(6.0, v))
+    if 0 <= u <= 31:
+        x, z = u, 10.0 - side
+        if side:
+            # Free-hanging cloth has shallow folds and a softly uneven hem.
+            drape = .055 + .065 * math.sin(u * math.pi) ** 2 * min(1, side / 6)
+            y += sign * (lift + drape)
+        else:
+            # A modest sag between joins conveys a stretched textile roof.
+            z -= .10 * (1 - (v / 6) ** 2) * math.sin(u * math.pi / 4) ** 2
+    else:
+        back = u > 31
+        drop = u - 31 if back else -u
+        x = 31.0 + lift if back else -lift
+        z = 10.0 - drop
+        if side:
+            y = sign * (6.0 - min(side, drop))
+            z = 10.0 - max(side, drop)
+            # The two halves of a diagonal tuck need separate surfaces.
+            # Otherwise coincident cloth faces flicker once they carry a pattern.
+            tuck = .012 * min(side, drop)
+            if side > drop:
+                tuck += .08 * min(side, drop) * (side-drop)/(side+drop)
+            x += (1 if back else -1) * tuck
+        if z < 0.03:
+            x += (1 if back else -1) * (0.03 - z)
+            z = 0.03
+    # Very shallow fabric ripples, not a pitched roof or rigid slab.
+    ripple = (0.012 * math.sin(u * math.pi * 2) * math.sin(v * math.pi)
+              if side else 0.0)
+    return Vector((x, y, z + lift + ripple))
+
+
+def covering_mesh(name: str, u0: float, u1: float, span: float,
+                  mat: str, layer: int) -> bpy.types.Object:
+    us = sorted(set([u0, u1] + [u0 + i / 4 for i in range(1, int((u1-u0)*4))]
+                    + [u for u in (0, 31) if u0 < u < u1]))
+    vs = sorted(set([-span / 2, span / 2, -6.0, 6.0]
+                    + [-span / 2 + i / 2 for i in range(1, int(span*2))]))
+    lift = layer * ASSUMED["cover_layer_separation"]
+    vertices = [tuple(m(c) for c in covering_point(u, v, lift)) for u in us for v in vs]
+    faces = []
+    n = len(vs)
+    for i in range(len(us)-1):
+        for j in range(n-1):
+            a = i*n+j
+            faces.append((a, a+n, a+n+1, a+1))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    mesh.materials.append(MATERIALS[mat])
+    uv = mesh.uv_layers.new(name="אריגה לפי מידות היריעה")
+    for polygon in mesh.polygons:
+        polygon.use_smooth = True
+        for loop_index in polygon.loop_indices:
+            vertex = mesh.loops[loop_index].vertex_index
+            i, j = divmod(vertex, n)
+            if layer >= 3:
+                # Each hide cover has one organic field, without a fabric repeat.
+                uv.data[loop_index].uv = ((us[i]-u0)/(u1-u0), (vs[j]+span/2)/span)
+            else:
+                uv.data[loop_index].uv = ((us[i]-u0)/4, (vs[j]+14)/4)
+    obj = bpy.data.objects.new(name, mesh)
+    collection(f"03.{layer} כיסוי").objects.link(obj)
+    obj["covering_layer"] = layer
+    obj["flat_width_cubits"] = u1-u0
+    obj["flat_length_cubits"] = span
+    obj["cloth_u_start"] = u0
+    obj["cloth_u_end"] = u1
+    solidify = obj.modifiers.new("עובי אריג משוער", "SOLIDIFY")
+    solidify.thickness = m(ASSUMED["cover_thickness"])
+    solidify.offset = 0
+    return obj
+
+
+def add_covering_join(u: float, span: float, layer: int, metal: str) -> None:
+    """Exactly 50 hooks and two matching sets of 50 loops per join."""
+    group = f"03.{layer} כיסוי"
+    loop_mat = "לולאות תכלת – יריעות" if layer == 1 else "לולאות עיזים"
+    for i in range(50):
+        v = -span / 2 + (i + 0.5) * span / 50
+        for side in (-1, 1):
+            p = covering_point(u + side * 0.05, v, layer * 0.065 + 0.012)
+            torus(f"לולאה כיסוי {layer} צד {side} {i+1:02d}", 0.03, 0.009,
+                  tuple(p), loop_mat, group)
+        p1 = covering_point(u-0.05, v, layer*0.065+0.012)
+        p2 = covering_point(u+0.05, v, layer*0.065+0.012)
+        rod(f"קרס כיסוי {layer} {i+1:02d}", tuple(p1), tuple(p2),
+            0.012, metal, group)
+
+
+def add_woven_figures() -> None:
+    """Flat coloured woven silhouettes: eagle inside, lion outside (Rashi 26:1).
+
+    The pattern, colour distribution and repeat are artistic. Thin face meshes
+    express woven figures rather than free-standing embroidered sculpture.
+    """
+    eagle = [(0,.8),(.2,.65),(.1,.5),(.2,.2),(.95,.6),(.75,.05),
+             (.35,-.15),(.15,-.4),(.3,-.7),(0,-.55),(-.3,-.7),
+             (-.15,-.4),(-.35,-.15),(-.75,.05),(-.95,.6),(-.2,.2),
+             (-.1,.5),(-.12,.65)]
+    lion = [(-.8,.15),(-.65,.3),(-.35,.3),(-.2,.52),(.05,.55),(.22,.4),
+            (.3,.12),(.68,.12),(.8,.4),(.88,.35),(.78,-.1),(.48,-.22),
+            (.42,-.58),(.25,-.58),(.24,-.2),(-.3,-.2),(-.4,-.58),
+            (-.57,-.58),(-.55,-.15),(-.8,-.05)]
+    for underside, shape in ((True, eagle), (False, lion)):
+        vertices, faces = [], []
+        for u in range(2, 40, 4):
+            for v in (-12, -8, -4, 0, 4, 8, 12):
+                from mathutils.geometry import tessellate_polygon
+                outline = [Vector((du, dv, 0)) for du, dv in shape]
+                for tessellated in tessellate_polygon([outline]):
+                    triangle = [outline[p] if isinstance(p, int) else p for p in tessellated]
+                    divisions = 5
+                    grid = {}
+                    for i in range(divisions+1):
+                        for j in range(divisions+1-i):
+                            du, dv, _ = (triangle[0] + (triangle[1]-triangle[0])*(i/divisions)
+                                         + (triangle[2]-triangle[0])*(j/divisions))
+                            p = covering_point(u+du, v+dv, .065)
+                            tangent_u = covering_point(u+du+.001, v+dv, .065)-p
+                            tangent_v = covering_point(u+du, v+dv+.001, .065)-p
+                            normal = tangent_u.cross(tangent_v).normalized()
+                            p += normal * (-.045 if underside else .045)
+                            grid[i,j] = len(vertices)
+                            vertices.append(tuple(m(c) for c in p))
+                    for i in range(divisions):
+                        for j in range(divisions-i):
+                            faces.append((grid[i,j], grid[i+1,j], grid[i,j+1]))
+                            if i+j < divisions-1:
+                                faces.append((grid[i+1,j], grid[i+1,j+1], grid[i,j+1]))
+        mesh = bpy.data.meshes.new("אריגה נשר" if underside else "אריגה אריה")
+        mesh.from_pydata(vertices, [], faces)
+        for mat in ("אריגה תכלת", "אריגה שני", "אריגה שש"):
+            mesh.materials.append(MATERIALS[mat])
+        mesh.update()
+        for i, face in enumerate(mesh.polygons):
+            face.material_index = (i // ((len(shape)-2)*25)) % 3
+        obj = bpy.data.objects.new(mesh.name, mesh)
+        obj["covering_layer"] = 1
+        collection("03.1 כיסוי").objects.link(obj)
+
+
 def add_outer_structure() -> None:
-    add_boards(cutaway=False)
-    group = "03 יריעות וכיסויים"
-    # A raised/exploded corner exposes all four prescribed layers.  The top
-    # hides the boards as the completed tent would have done.
-    box("יריעות המשכן – גג", (30, 10, 0.10), (15, 0, 10.10), "ארגמן", group)
-    for side, y in (("צפון", -4.96), ("דרום", 4.96)):
-        box(f"יריעות המשכן – דופן {side}", (30, 0.10, 9),
-            (15, y, 5.55), "ארגמן", group)
-        for index in range(10):
-            x = 2 + index * 3
-            box(f"פס ארוג בדופן {side} {index + 1}", (0.18, 0.115, 8.5),
-                (x, y + (-0.01 if side == "צפון" else 0.01), 5.55),
-                ("תכלת", "תולעת שני", "שש משזר")[index % 3], group)
-    box("יריעות המשכן – אחוריים", (0.10, 10, 10), (29.96, 0, 5),
-        "ארגמן", group)
-
-    # The outer layers are stepped back to make the prescribed order legible.
-    box("יריעות עיזים – גג", (30.4, 10.4, 0.10), (15, 0, 10.26), "עיזים", group)
-    box("מכסה עורות אילים מאדמים", (27.5, 10.8, 0.10), (16.4, 0, 10.42),
-        "עורות אילים מאדמים", group)
-    box("מכסה עורות תחשים – מידה סכמטית", (24.5, 11.2, 0.10),
-        (17.9, 0, 10.58), "עורות תחשים – גוון סכמטי", group)
-
+    # Rashi's constant-thickness reconstruction: 10 cubits CLEAR inside,
+    # plus a one-cubit board on each side. Keep the older cutaways unchanged.
+    add_covering_textures()
+    add_boards(cutaway=False, full_width=True)
+    box("רצפת המשכן המכוסה", (30, 10, .14), (15, 0, .07),
+        "חול המדבר", "03 פנים המשכן")
+    add_embroidered_textile("מסך פתח אוהל מועד", -.08, 5, 10, "03 פנים המשכן")
+    for i, y in enumerate((-3.75, -1.25, 1.25, 3.75), 1):
+        cylinder(f"עמוד הפרוכת {i}", .12, 10, (20, y, 5), "זהב", "03 פנים המשכן", 20)
+        cylinder(f"אדן כסף לפרוכת {i}", .23, .35, (20, y, .175), "כסף", "03 פנים המשכן", 24)
+    add_embroidered_textile("הפרוכת", 20, 5, 10, "03 פנים המשכן", veil=True)
+    for add_vessel in (add_ark, add_incense_altar, add_table, add_menorah):
+        add_vessel()
+    for i in range(10):
+        covering_mesh(f"יריעת משכן {i+1:02d} – מחברת {1+i//5}", i*4, (i+1)*4,
+                      SOURCE["inner_curtain"][0], "אריג יריעות המשכן", 1)
+    add_woven_figures()
+    add_covering_join(20, 28, 1, "קרסי זהב – יריעות")
+    # Six panels (-2..22) toward the east, five (22..42) toward the west.
+    # Two cubits fold over the entrance; the remaining two extend behind.
+    for i in range(11):
+        covering_mesh(f"יריעת עיזים {i+1:02d} – מחברת {1 if i<6 else 2}",
+                      -2+i*4, 2+i*4, SOURCE["goat_curtain"][0], "אריג עיזים שחור", 2)
+    add_covering_join(22, 30, 2, "קרסי נחושת – יריעות")
+    # Rashi 26:14: two superposed 30 x 10 roof hides; neither covers the walls.
+    for layer, name, mat in ((3, "מכסה עורות אילים מאדמים", "מכסה אילים"),
+                             (4, "מכסה עורות תחשים", "מכסה תחשים")):
+        hide_length, hide_width = INTERPRETED["roof_hides"]
+        covering_mesh(name, 0, hide_length, hide_width, mat, layer)
     add_altar_and_laver()
 
 
@@ -1015,7 +1223,7 @@ def add_open_tabernacle_in_courtyard() -> None:
     add_altar_and_laver()
 
 
-def setup_scene(interior: bool) -> None:
+def setup_scene(interior: bool, covered: bool = False) -> None:
     world = bpy.context.scene.world
     world.use_nodes = True
     background = world.node_tree.nodes.get("Background")
@@ -1046,6 +1254,9 @@ def setup_scene(interior: bool) -> None:
                        else (m(-92), m(82), m(70)))
     camera_target = (Vector((m(14), 0, m(3.4))) if interior
                      else Vector((0, 0, m(3))))
+    if covered:
+        camera_location = (m(-32), m(52), m(32))
+        camera_target = Vector((m(12), 0, m(4)))
     bpy.ops.object.camera_add(location=camera_location)
     camera = bpy.context.object
     camera.name = "מצלמת פנים המשכן" if interior else "מצלמת חצר המשכן"
@@ -1065,9 +1276,11 @@ def setup_scene(interior: bool) -> None:
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
     scene.render.filepath = os.path.abspath(
+        "tabernacle_covered_preview.png" if covered else
         "tabernacle_interior_preview.png" if interior else "tabernacle_preview.png"
     )
     scene["model_title"] = (
+        "Wilderness Tabernacle covered tent" if covered else
         "Wilderness Tabernacle cutaway" if interior
         else "Wilderness Tabernacle and courtyard"
     )
@@ -1081,7 +1294,7 @@ def setup_scene(interior: bool) -> None:
     )
 
 
-def build(interior: bool = False) -> None:
+def build(interior: bool = False, covered: bool = False) -> None:
     clear_scene()
     add_materials()
     for name in ("01 חצר המשכן", "02 קרשים אדנים ובריחים", "03 יריעות וכיסויים",
@@ -1092,30 +1305,47 @@ def build(interior: bool = False) -> None:
         add_interior()
     else:
         add_courtyard()
-        add_open_tabernacle_in_courtyard()
-    setup_scene(interior)
+        if covered:
+            add_outer_structure()
+        else:
+            add_open_tabernacle_in_courtyard()
+    setup_scene(interior, covered)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--interior", action="store_true")
+    variant = parser.add_mutually_exclusive_group()
+    variant.add_argument("--interior", action="store_true")
+    variant.add_argument("--covered", action="store_true")
     parser.add_argument("--save", default="")
     parser.add_argument("--export", default="")
     parser.add_argument("--render", action="store_true")
+    parser.add_argument("--preview-layer", type=int, choices=(1, 2, 3, 4), default=4)
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     return parser.parse_args(args)
 
 
 def finish(args: argparse.Namespace) -> None:
     if args.render:
-        bpy.ops.render.render(write_still=True)
+        hidden = []
+        if args.covered:
+            for layer in range(args.preview_layer+1, 5):
+                group = COLLECTIONS[f"03.{layer} כיסוי"]
+                group.hide_render = True
+                hidden.append(group)
+        try:
+            bpy.ops.render.render(write_still=True)
+        finally:
+            for group in hidden:
+                group.hide_render = False
     if args.save:
         bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(args.save))
     if args.export:
-        bpy.ops.export_scene.gltf(filepath=os.path.abspath(args.export), export_format="GLB")
+        bpy.ops.export_scene.gltf(filepath=os.path.abspath(args.export), export_format="GLB",
+                                  export_extras=True)
 
 
 if __name__ == "__main__":
     parsed = parse_args()
-    build(parsed.interior)
+    build(parsed.interior, parsed.covered)
     finish(parsed)

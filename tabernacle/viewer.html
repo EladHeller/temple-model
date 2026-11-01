@@ -281,6 +281,12 @@
     .place-copy small { color: #898275; font-size: 10px; }
     .place-arrow { color: #70695e; font-size: 19px; transform: rotate(180deg); }
 
+    .cover-controls { margin: 8px 15px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; }
+    .cover-controls[hidden] { display: none; }
+    .cover-controls label { display: block; margin-bottom: 7px; color: var(--gold-light); }
+    .cover-controls select { width: 100%; padding: 8px 5px; color: var(--ink); background: var(--panel-soft); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 16px; }
+    .cover-controls small { display: block; margin-top: 7px; color: var(--muted); line-height: 1.5; }
+
     .explorer-foot {
       padding: 13px 15px;
       border-top: 1px solid var(--line);
@@ -669,7 +675,10 @@
       .brand-mark { display: none; }
       .brand-copy h1 { max-width: 126px; font-size: 15px; }
       .view-tabs { margin-right: auto; }
-      .view-tab { min-width: 57px; padding: 0 7px; }
+      .view-tab { min-width: 48px; padding: 0 5px; font-size: 11px; }
+      .brand-copy h1 { max-width: 92px; }
+      .mobile-menu { padding: 0 7px; font-size: 11px; gap: 4px; }
+      .app-header { gap: 5px; padding: 0 7px; }
       .info-meta { align-items: flex-start; flex-direction: column; gap: 6px; }
       .info-card { bottom: 66px; }
     }
@@ -693,7 +702,8 @@
       </div>
 
       <div class="view-tabs" role="tablist" aria-label="בחירת דגם">
-        <button class="view-tab" id="tab-exterior" type="button" role="tab" aria-selected="true" data-model="exterior">דגם חוץ</button>
+        <button class="view-tab" id="tab-exterior" type="button" role="tab" aria-selected="true" data-model="exterior">חתך חוץ</button>
+        <button class="view-tab" id="tab-covered" type="button" role="tab" aria-selected="false" data-model="covered">עם יריעות</button>
         <button class="view-tab" id="tab-interior" type="button" role="tab" aria-selected="false" data-model="interior">פנים</button>
       </div>
 
@@ -720,6 +730,16 @@
           <p id="section-description">בחרו אזור כדי לקרוא עליו ולשנות את זווית התצוגה.</p>
         </div>
         <nav class="place-list" id="place-list" aria-label="אזורים בדגם"></nav>
+        <div class="cover-controls" id="cover-controls" hidden>
+          <label for="cover-layer">שכבות הכיסוי</label>
+          <select id="cover-layer">
+            <option value="4" selected>כל הכיסויים — עורות תחשים ססגוניים</option>
+            <option value="3">ללא תחשים — עורות אילים מאדמים</option>
+            <option value="2">ללא מכסי העור — יריעות העיזים</option>
+            <option value="1">היריעות הפנימיות — תכלת, ארגמן, שני ושש</option>
+          </select>
+          <small id="cover-hint">ברירת המחדל כוללת את כל הכיסויים. הסירו שכבות כדי לחשוף את היריעות הפנימיות.</small>
+        </div>
         <div class="explorer-foot">השחזור הוא כלי לימודי. פרטים שאינם מוכרעים במקורות מוצגים באופן סכמטי.</div>
       </aside>
 
@@ -818,7 +838,7 @@
   <noscript><div class="error-message" style="display:block">יש להפעיל JavaScript כדי להשתמש באפליקציה.</div></noscript>
 
   <script type="module">
-    import { createWalkTour } from '../walk-tour.js?v=6';
+    import { createWalkTour } from '../walk-tour.js?v=7';
 
     const catalog = {
       exterior: {
@@ -844,6 +864,31 @@
           { title: 'קרשי המשכן', short: 'קרשים, אדני כסף ובריחים', kicker: 'שמות כו, טו–ל; שבת צח ע״ב', description: 'עשרים קרשים בכל צד ושישה במערב, עם שני קרשי מקצוע. לכל קרש שתי ידות בגובה אמה, וכל יד נכנסת לאדן כסף נפרד וחלול. מידות האדן והחלל נבחרו לפי שיטת רש״י המובאת בערך אדני המשכן.', measurement: 'אדן: 1×0.75×1 אמה · חלל: 0.5×0.25', source: 'https://he.wikipedia.org/wiki/אדני_המשכן#אדני_הקרשים', orbit: '-28deg 60deg auto' },
           { title: 'המשכן הפתוח וכליו', short: 'ללא יריעות הכיסוי', kicker: 'שמות כה–כו; ל', description: 'לפי בחירת התצוגה, יריעות הגג והמכסים הוסרו, ובמקום קרשי דופן הדרום נותרה שורת אדני הכסף עם שקעים לבליטות הקרשים. כך נחשפים הכלים במקומם: מזבח הקטורת, השולחן והמנורה בקודש, וארון העדות מעבר לפרוכת.', measurement: 'חלוקה מסורתית: 20 + 10 אמות', source: 'https://he.wikipedia.org/wiki/המשכן#שיטת_חז״ל_והפרשנות_המסורתית', orbit: '-48deg 56deg auto' },
           { title: 'מיקום המשכן בחצר', short: 'לפי השחזור המסורתי', kicker: 'ברייתא דמלאכת המשכן', description: 'המשכן מוצב במערב החצר: עשרים אמה מן הקלעים בצפון, בדרום ובמערב, וחמישים אמה של חצר פתוחה במזרח. מיקום זה אינו מפורש בתורה ומוצג לפי שיטת חז״ל המסוכמת בערך המשכן.', measurement: '50 אמה במזרח · 20 בשאר הצדדים', source: 'https://he.wikipedia.org/wiki/המשכן#מקומו_בחצר', orbit: '-72deg 64deg auto' }
+        ]
+      },
+      covered: {
+        src: 'tabernacle_covered.glb?v=3',
+        poster: 'tabernacle_covered_preview.png?v=4',
+        alt: 'דגם תלת־ממדי נפרד של המשכן השלם עם ארבע שכבות יריעות ומכסים',
+        kicker: 'המשכן המכוסה',
+        title: 'אוהל מועד עם היריעות',
+        description: 'כל שכבות הכיסוי, ובראשן עור תחש ססגוני לפי רש״י. הסירו שכבות בבורר כדי לחשוף את היריעות הפנימיות.',
+        walk: { position: [-5, 0, -7], yaw: -1.05, pitch: 0 },
+        stations: [
+          { position: [-5, 0, -7], yaw: -1.05 },
+          { position: [4, 0, 0], yaw: -Math.PI / 2, pitch: .75 },
+          { position: [8, 0, -8], yaw: Math.PI, pitch: .2 },
+          { position: [-3, 0, 0], yaw: -Math.PI / 2, pitch: .35 },
+          { position: [18, 0, -6], yaw: 1, pitch: .15 },
+          { position: [6, 0, 0], yaw: -Math.PI / 2, pitch: .8 },
+        ],
+        items: [
+          { title: 'אוהל מועד המכוסה', short: 'עורות תחשים ססגוניים מעל ארבע שכבות', kicker: 'שמות כו · רש״י', description: 'האוהל מוצג עם כל הכיסויים: היריעות הארוגות, יריעות העיזים, עורות אילים מאדמים ועורות תחשים ססגוניים. אפשר להסיר את השכבות העליונות כדי לראות את האריג הפנימי. ריבוי גוני התחש נשען על רש״י לשמות כה, ה; בחירת הגוונים ודוגמת הכתמים הן המחשה אמנותית. נבחרה פריסת רש״י עם קרשים בעובי קבוע; חלל האוהל ברוחב עשר אמות, ועוד אמה של קרשים בכל צד. הסרת שכבות היא כלי לימודי בצופה.', measurement: 'חלל: 30×10 אמות · גובה: 10 אמות', source: 'https://he.wikipedia.org/wiki/המשכן', orbit: '-130deg 65deg 34m', target: '7.5m 2.5m 0m' },
+          { title: 'יריעות המשכן', short: '10 יריעות · שתי מחברות של 5', kicker: 'שמות כו, א–ו', description: 'כל יריעה היא 28×4 אמות; שתי מחברות של חמש יוצרות אריג של 28×40 אמות. החיבור נמצא מעל הפרוכת, עשרים אמה מהפתח, ובו חמישים קרסי זהב ושתי שורות של חמישים לולאות תכלת. דגמי האריה והנשר משני עברי האריג סכמטיים לפי רש״י. בחרו „יריעות המשכן” לחשיפתן.', measurement: '10 יריעות · 28×4 אמות · 50 קרסי זהב', source: 'https://he.wikipedia.org/wiki/יריעות_המשכן', orbit: '-35deg 42deg 28m', target: '8m 3m 0m' },
+          { title: 'יריעות העיזים', short: '11 יריעות שחורות · מחברות של 6 ו־5', kicker: 'שמות כו, ז–יג', description: 'אחת־עשרה יריעות של 30×4 אמות מחוברות בשתי מחברות, בשש יריעות ובחמש, עם חמישים קרסי נחושת. אורכן מוסיף אמה תלויה בכל צד לעומת האריג הפנימי. לפי רש״י נותרת אמה תחתונה של אדני הכסף גלויה. זו שיטת הפריסה שנבחרה בדגם.', measurement: '11 יריעות · 30×4 אמות · 50 קרסי נחושת', source: 'https://he.wikisource.org/wiki/רש%22י_על_שמות_כו#פסוק_ח', orbit: '-50deg 62deg 29m', target: '8m 2.5m 0m' },
+          { title: 'כפל היריעה בחזית', short: 'שתי אמות מעל מסך הפתח', kicker: 'שמות כו, ט · רש״י', description: 'מחצית רוחבה של היריעה העודפת, שתי אמות, משתפלת מעל מסך הפתח במזרח לפי רש״י. החצי האחר מוסיף שתי אמות במערב. צורת קפלי הבד בפינות ועוביו הם המחשה אמנותית.', measurement: 'כפל בחזית: 2 אמות', source: 'https://he.wikisource.org/wiki/רש%22י_על_שמות_כו#פסוק_ט', orbit: '90deg 68deg 22m', target: '1m 3m 0m' },
+          { title: 'העודף מאחורי המשכן', short: 'המשך היריעות במערב', kicker: 'שמות כו, יב', description: 'האריג הפנימי נפרש לאורך האוהל ומשתפל מאחורי הקרשים. יריעות העיזים מוסיפות שם שתי אמות של בד. בדגם מוצג גם העודף המגיע לקרקע מאחור; קיפולי הפינות הם השלמה גאומטרית משוערת.', measurement: 'עודף עיזים במערב: 2 אמות', source: 'https://he.wikisource.org/wiki/רש%22י_על_שמות_כו#פסוק_יב', orbit: '-115deg 65deg 24m', target: '13m 2m 0m' },
+          { title: 'מכסי עורות האילים והתחשים', short: 'שני מכסים זה על זה · על הגג בלבד', kicker: 'שמות כו, יד · רש״י', description: 'נבחר פירוש רש״י המציג שני מכסים של 30×10 אמות זה מעל זה על הגג: עורות אילים צבועים אדום, ומעליהם עורות תחשים. לפי רש״י לשמות כה, ה, לתחש היו גוונים רבים. לכן המכסה מוצג כעור ססגוני ומנומר. המקור אינו מפרט את הגוונים ואת דוגמתם, והבחירה החזותית כאן היא המחשה אמנותית.', measurement: 'כל מכסה: 30×10 אמות לפי רש״י', source: 'https://he.wikisource.org/wiki/רש%22י_על_שמות_כה_ה', orbit: '20deg 32deg 29m', target: '7.5m 3m 0m' }
         ]
       },
       interior: {
@@ -894,6 +939,36 @@
     let activeModel = 'exterior';
     let activeItem = 0;
     let resumeSpin = true;
+    const coverControls = document.querySelector('#cover-controls');
+    const coverLayer = document.querySelector('#cover-layer');
+    const coveringMaterials = {
+      'אריג יריעות המשכן': 1, 'לולאות תכלת – יריעות': 1, 'קרסי זהב – יריעות': 1,
+      'אריגה תכלת': 1, 'אריגה שני': 1, 'אריגה שש': 1,
+      'אריג עיזים שחור': 2, 'לולאות עיזים': 2, 'קרסי נחושת – יריעות': 2,
+      'מכסה אילים': 3, 'מכסה תחשים': 4,
+    };
+
+    function prepareCoveredFocus() {
+      if (activeModel !== 'covered') return;
+      viewer.removeAttribute('auto-rotate');
+      spinButton.setAttribute('aria-pressed', 'false');
+      viewer.resetTurntableRotation(0);
+    }
+
+    function applyCoverLayers() {
+      if (activeModel !== 'covered' || !viewer.model) return;
+      const level = walkTour.active ? 4 : Number(coverLayer.value);
+      for (const material of viewer.model.materials) {
+        const layer = coveringMaterials[material.name];
+        if (!layer) continue;
+        const color = [...material.pbrMetallicRoughness.baseColorFactor];
+        color[3] = layer <= level ? 1 : 0;
+        material.setAlphaMode(layer <= level ? 'OPAQUE' : 'MASK');
+        material.setAlphaCutoff(.5);
+        material.pbrMetallicRoughness.setBaseColorFactor(color);
+      }
+    }
+    coverLayer.addEventListener('change', applyCoverLayers);
 
     const walkTour = createWalkTour({
       stage,
@@ -930,6 +1005,7 @@
     });
 
     function setWalkMode(enabled) {
+      coverLayer.disabled = enabled;
       walkToggle.setAttribute('aria-pressed', String(enabled));
       stage.classList.toggle('walk-active', enabled);
       walkToggleLabel.textContent = enabled ? 'תצוגה' : 'סיור';
@@ -956,11 +1032,13 @@
         spinButton.setAttribute('aria-pressed', String(resumeSpin));
         loadingLayer.classList.add('is-hidden');
         statusText.textContent = 'הדגם מוכן';
+        applyCoverLayers();
       }
     }
 
     function renderCatalog() {
       const section = catalog[activeModel];
+      coverControls.hidden = activeModel !== 'covered';
       document.querySelector('#section-kicker').textContent = section.kicker;
       document.querySelector('#section-title').textContent = section.title;
       document.querySelector('#section-description').textContent = section.description;
@@ -989,9 +1067,10 @@
         if (walkTour.active) {
           walkTour.jumpTo(catalog[activeModel].stations[index]);
         } else {
+          prepareCoveredFocus();
           viewer.cameraOrbit = item.orbit;
-          viewer.cameraTarget = 'auto auto auto';
-          viewer.fieldOfView = '30deg';
+          viewer.cameraTarget = item.target || 'auto auto auto';
+          viewer.fieldOfView = activeModel === 'covered' ? '40deg' : '30deg';
           viewer.jumpCameraToGoal();
         }
       }
@@ -1002,6 +1081,7 @@
       activeModel = name;
       activeItem = 0;
       const section = catalog[name];
+      prepareCoveredFocus();
       document.querySelectorAll('.view-tab').forEach(tab => {
         tab.setAttribute('aria-selected', String(tab.dataset.model === name));
       });
@@ -1014,8 +1094,10 @@
       viewer.alt = section.alt;
       viewer.src = section.src;
       downloadModel.href = section.src;
+      viewer.fieldOfView = name === 'covered' ? '40deg' : '30deg';
       viewer.cameraOrbit = section.items[0].orbit;
-      viewer.cameraTarget = 'auto auto auto';
+      viewer.cameraTarget = section.items[0].target || 'auto auto auto';
+      coverLayer.value = '4';
       renderCatalog();
       if (walkTour.active) {
         infoCard.hidden = true;
@@ -1050,6 +1132,14 @@
     });
 
     viewer.addEventListener('load', () => {
+      requestAnimationFrame(() => {
+        const item = catalog[activeModel].items[activeItem];
+        viewer.cameraOrbit = item.orbit;
+        viewer.cameraTarget = item.target || 'auto auto auto';
+        viewer.resetTurntableRotation(0);
+        viewer.jumpCameraToGoal();
+      });
+      applyCoverLayers();
       if (walkTour.active) return;
       statusText.textContent = 'הדגם מוכן';
       progressBar.style.transform = 'scaleX(1)';
@@ -1069,14 +1159,21 @@
         walkTour.reset();
         return;
       }
+      prepareCoveredFocus();
       viewer.cameraOrbit = catalog[activeModel].items[0].orbit;
-      viewer.cameraTarget = 'auto auto auto';
-      viewer.fieldOfView = '30deg';
+      viewer.cameraTarget = catalog[activeModel].items[0].target || 'auto auto auto';
+      viewer.fieldOfView = activeModel === 'covered' ? '40deg' : '30deg';
       viewer.jumpCameraToGoal();
     });
 
     spinButton.addEventListener('click', () => {
       const spinning = viewer.hasAttribute('auto-rotate');
+      if (!spinning && activeModel === 'covered') {
+        viewer.cameraTarget = 'auto auto auto';
+        viewer.cameraOrbit = '38deg 62deg auto';
+        viewer.resetTurntableRotation(0);
+        viewer.jumpCameraToGoal();
+      }
       viewer.toggleAttribute('auto-rotate', !spinning);
       spinButton.setAttribute('aria-pressed', String(!spinning));
     });
@@ -1104,6 +1201,7 @@
     window.addEventListener('keydown', event => {
       if (event.key === '1') switchModel('exterior');
       if (event.key === '2') switchModel('interior');
+      if (event.key === '3') switchModel('covered');
       if (event.key.toLowerCase() === 'r') document.querySelector('#reset-camera').click();
       if (event.code === 'Space' && !event.repeat && !walkTour.active) {
         event.preventDefault();

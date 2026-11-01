@@ -46,6 +46,10 @@ jobs:
           cp tabernacle/tabernacle_interior.glb _site/tabernacle/
           cp tabernacle/tabernacle_preview.png _site/tabernacle/
           cp tabernacle/tabernacle_interior_preview.png _site/tabernacle/
+          cp tabernacle/tabernacle_covered.glb _site/tabernacle/
+          cp tabernacle/tabernacle_covered_preview.png _site/tabernacle/
+          test -s _site/tabernacle/tabernacle_covered.glb
+          test -s _site/tabernacle/tabernacle_covered_preview.png
           test -s _site/index.html
           test -s _site/walk-tour.js
           test -s _site/temple/temple_middot.glb
