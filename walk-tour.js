@@ -18,6 +18,19 @@ const DOWN = new THREE.Vector3(0, -1, 0);
 // therefore produces a much wider invisible box than the slender rail itself
 // and can seal the narrow immersion steps that it is meant to accompany.
 const NON_BLOCKING_OBSTACLE = /(?:סורג|לשכת המצורעים – מאחז ירידה)/;
+// Cloth and its raised embroidery are passable during the educational tour.
+// Match textile names, not their supporting posts, sockets or rails.
+const WALK_THROUGH_CURTAIN = /(?:^| – )(?:ה?פרוכת|מסך פתח אוהל מועד)(?:\s|\.|$)|^(?:מסך שער החצר|פס מסך שער החצר|קפל הפרוכת|פס ארוג בפרוכת|גדיל פרוכת האולם)(?:\s|\.|$)/;
+
+function isWalkThroughTextile(object) {
+  // Multi-material GLB meshes put their metadata on the parent group.
+  // Include that group so individual embroidery colours cannot block a room.
+  for (let part = object; part; part = part.parent) {
+    const name = part.name.replaceAll('_', ' ');
+    if (part.userData.covering_layer || WALK_THROUGH_CURTAIN.test(name)) return true;
+  }
+  return false;
+}
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -302,9 +315,10 @@ export function createWalkTour({
         const isGround = /(?:קרקע|^רצפת|^משטח|אבן ריצוף|^מעלת|^מעלה |מעלה (?:חיצונית )?במקווה|^בסיס העזרה|^המפלס המוגבה|^רצועת החיל|^כבש|^דופן נחושת כבש|^מילוי אדמה בכבש|^מילוי אדמה במזבח|^פני אדמת המזבח|^דופן מזבח הנחושת|מקום הילוך|אבן הסף|מעמד הטהרה)/.test(collisionName);
         if (isGround) {
           groundMeshes.push(object);
-        } else if (!object.userData.covering_layer && !NON_BLOCKING_OBSTACLE.test(collisionName)) {
+        } else if (!isWalkThroughTextile(object)
+                   && !NON_BLOCKING_OBSTACLE.test(collisionName)) {
           // Draped cloth wraps the whole room; its bounding box is not a wall.
-          // The complete board walls and entrance screen provide collisions.
+          // The complete board walls and supporting posts provide collisions.
           obstacleBoxes.push({ name: object.name, box: new THREE.Box3().setFromObject(object) });
         }
       });
