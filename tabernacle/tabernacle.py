@@ -1320,7 +1320,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save", default="")
     parser.add_argument("--export", default="")
     parser.add_argument("--render", action="store_true")
-    parser.add_argument("--preview-layer", type=int, choices=(1, 2, 3, 4), default=4)
+    parser.add_argument("--preview-layer", type=int, choices=(0, 1, 2, 3, 4), default=4)
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     return parser.parse_args(args)
 
